@@ -4,7 +4,10 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+let stripe;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
 const { body, validationResult } = require('express-validator');
 
 const app = express();
@@ -393,8 +396,16 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
 });
 
 // Start server
-initDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+initDatabase()
+  .then(() => {
+    console.log('Database initialized');
+  })
+  .catch((err) => {
+    console.error('Database init error:', err.message);
+  })
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   });
 });
