@@ -88,11 +88,11 @@ async function initDatabase() {
     if (parseInt(roomTypesExist.rows[0].count) === 0) {
       await client.query(`
         INSERT INTO room_types (name, description, base_price, max_guests) VALUES
-        ('Singola', 'Camera singola con letto singolo', 80.00, 1),
-        ('Doppia Standard', 'Camera doppia con letto matrimoniale', 120.00, 2),
-        ('Doppia Superior', 'Camera doppia superiore con vista', 160.00, 2),
-        ('Tripla', 'Camera triple con letto matrimoniale e singolo', 180.00, 3),
-        ('Suite', 'Suite con soggiorno e vista panoramica', 280.00, 4);
+        ('Singola Bagno Condiviso', 'Camera singola con TV, scrivania, armadio e bagno condiviso. 12 m²', 45.00, 1),
+        ('Doppia/Twin Bagno Condiviso', 'Camera doppia o matrimoniale con TV, scrivania, balcone e bagno condiviso. 15 m²', 55.00, 2),
+        ('Singola Bagno Privato', 'Camera singola con aria condizionata, TV, bagno privato con bidet. 12 m²', 60.00, 1),
+        ('Doppia Standard', 'Camera doppia con bagno privato, TV, balcone. 15 m²', 75.00, 2),
+        ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3);
       `);
     }
 

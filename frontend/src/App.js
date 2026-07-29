@@ -34,7 +34,7 @@ function App() {
     <Router>
       <div className="app">
         <header className="header">
-          <h1>Hotel</h1>
+          <h1>Hotel Vittorio Veneto</h1>
           <nav>
             <Link to="/">Home</Link>
             <Link to="/prenota">Prenota</Link>
@@ -53,18 +53,18 @@ function App() {
 
         <main className="main-content">
           <Routes>
-            <Route path="/" element={
-              <>
-                <section className="hero">
-                  <h1>Benvenuto Hotel</h1>
-                  <p>Scopri il comfort e l'eleganza delle nostre camere. Prenota il tuo soggiorno con semplicità e sicurezza.</p>
-                </section>
-                <section className="booking-form">
-                  <h2>Le Nostre Camere</h2>
-                  <p>Offriamo diverse tipologie di camere per soddisfare ogni esigenza. Dalla camera singola alla suite panoramica, troverai sicuramente l'alternativa perfetta per il tuo soggiorno.</p>
-                </section>
-              </>
-            } />
+          <Route path="/" element={
+            <>
+              <section className="hero">
+                <h1>Hotel Vittorio Veneto</h1>
+                <p>Albergo nel cuore di Napoli, a soli 300m da Piazza Garibaldi. Posizione privilegiata nel vivace centro storico, circondato da ristoranti, pizzerie e bar.</p>
+              </section>
+              <section className="booking-form">
+                <h2>Le Nostre Camere</h2>
+                <p>Offriamo diverse tipologie di camere per soddisfare ogni esigenza. Dalla camera singola con bagno condiviso alla triple standard con balcone, troverai sicuramente l'alternativa perfetta per il tuo soggiorno a Napoli.</p>
+              </section>
+            </>
+          } />
             
             <Route path="/prenota" element={
               <Elements stripe={stripePromise}>
@@ -97,7 +97,7 @@ function App() {
           textAlign: 'center',
           marginTop: 'auto'
         }}>
-          <p>&copy; 2024 Hotel. Tutti i diritti riservati.</p>
+          <p>&copy; 2026 Hotel Vittorio Veneto Napoli. Tutti i diritti riservati.</p>
         </footer>
       </div>
     </Router>
