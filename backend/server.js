@@ -83,18 +83,16 @@ async function initDatabase() {
       ON CONFLICT (config_key) DO NOTHING;
     `);
 
-    // Insert default room types if not exists
-    const roomTypesExist = await client.query('SELECT COUNT(*) FROM room_types');
-    if (parseInt(roomTypesExist.rows[0].count) === 0) {
-      await client.query(`
-        INSERT INTO room_types (name, description, base_price, max_guests) VALUES
-        ('Singola Bagno Condiviso', 'Camera singola con TV, scrivania, armadio e bagno condiviso. 12 m²', 45.00, 1),
-        ('Doppia/Twin Bagno Condiviso', 'Camera doppia o matrimoniale con TV, scrivania, balcone e bagno condiviso. 15 m²', 55.00, 2),
-        ('Singola Bagno Privato', 'Camera singola con aria condizionata, TV, bagno privato con bidet. 12 m²', 60.00, 1),
-        ('Doppia Standard', 'Camera doppia con bagno privato, TV, balcone. 15 m²', 75.00, 2),
-        ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3);
-      `);
-    }
+    // Reset and insert room types
+    await client.query('DELETE FROM room_types');
+    await client.query(`
+      INSERT INTO room_types (name, description, base_price, max_guests) VALUES
+      ('Singola Bagno Condiviso', 'Camera singola con TV, scrivania, armadio e bagno condiviso. 12 m²', 45.00, 1),
+      ('Doppia/Twin Bagno Condiviso', 'Camera doppia o matrimoniale con TV, scrivania, balcone e bagno condiviso. 15 m²', 55.00, 2),
+      ('Singola Bagno Privato', 'Camera singola con aria condizionata, TV, bagno privato con bidet. 12 m²', 60.00, 1),
+      ('Doppia Standard', 'Camera doppia con bagno privato, TV, balcone. 15 m²', 75.00, 2),
+      ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3);
+    `);
 
     console.log('Database initialized successfully');
   } finally {
