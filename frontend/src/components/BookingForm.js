@@ -58,6 +58,17 @@ const BookingForm = ({ apiUrl }) => {
     calculatePrice();
   }, [formData.checkIn, formData.checkOut, formData.roomTypeId, roomTypes]);
 
+  const getRoomPhoto = (roomName) => {
+    const photoMap = {
+      'Singola Bagno Condiviso': '/images/rooms/singola-bagno-comune.jpg',
+      'Singola Bagno Privato': '/images/rooms/singola-bagno-privato.png',
+      'Doppia Standard': '/images/rooms/doppia-standard.jpg',
+      'Doppia/Twin Bagno Condiviso': '/images/rooms/doppia-standard.jpg',
+      'Tripla Standard': '/images/rooms/tripla-standard.jpg'
+    };
+    return photoMap[roomName] || '/images/rooms/doppia-standard.jpg';
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -172,6 +183,19 @@ const BookingForm = ({ apiUrl }) => {
               ))}
             </select>
           </div>
+
+          {formData.roomTypeId && (
+            <div className="room-photo" style={{ margin: '1rem 0', textAlign: 'center' }}>
+              <img 
+                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)} 
+                alt="Camera selezionata"
+                style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'cover' }}
+              />
+              <p style={{ marginTop: '0.5rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>
+                {roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description}
+              </p>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="numGuests">Numero Ospiti</label>

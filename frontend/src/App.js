@@ -59,6 +59,59 @@ function App() {
                 <h1>Hotel Vittorio Veneto</h1>
                 <p>Albergo nel cuore di Napoli, a soli 300m da Piazza Garibaldi. Posizione privilegiata nel vivace centro storico, circondato da ristoranti, pizzerie e bar.</p>
               </section>
+
+              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>I Nostri Servizi</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📶</div>
+                    <h4>Wi-Fi Gratuito</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Connessione Wi-Fi gratuita in tutte le aree comuni</p>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🅿️</div>
+                    <h4>Parcheggio</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Parcheggio privato nelle vicinanze</p>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☕</div>
+                    <h4>Colazione</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Colazione in camera disponibile</p>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❄️</div>
+                    <h4>Aria Condizionata</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Climatizzazione in tutte le camere</p>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧳</div>
+                    <h4>Deposito Bagagli</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Servizio deposito bagagli gratuito</p>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧹</div>
+                    <h4>Pulizia Giornaliera</h4>
+                    <p style={{ color: 'var(--text-light)' }}>Servizio di pulizia e cambio biancheria</p>
+                  </div>
+                </div>
+              </section>
+
+              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '1rem' }}>Dove Siamo</h2>
+                <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '1.5rem' }}>Via Milano, 96 - Napoli (Centro Storico)</p>
+                <div style={{ maxWidth: '800px', margin: '0 auto', borderRadius: '8px', overflow: 'hidden' }}>
+                  <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3019.5!2d14.268!3d40.852!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x133b085c7e7e7e7e%3A0x7e7e7e7e7e7e7e7e!2sVia+Milano%2C+96%2C+Napoli!5e0!3m2!1sit!2sit!4v1234567890"
+                    width="100%" 
+                    height="400" 
+                    style={{ border: 0 }} 
+                    allowFullScreen="" 
+                    loading="lazy"
+                    title="Posizione Hotel Vittorio Veneto"
+                  ></iframe>
+                </div>
+              </section>
+
               <section className="booking-form">
                 <h2>Le Nostre Camere</h2>
                 <p>Offriamo diverse tipologie di camere per soddisfare ogni esigenza. Dalla camera singola con bagno condiviso alla triple standard con balcone, troverai sicuramente l'alternativa perfetta per il tuo soggiorno a Napoli.</p>
