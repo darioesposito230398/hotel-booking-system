@@ -80,24 +80,35 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Hero Section */
 .hero {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  background: linear-gradient(rgba(26, 54, 93, 0.7), rgba(26, 54, 93, 0.8)), 
+              url('https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=1600&q=80') center/cover;
   color: white;
-  padding: 4rem 2rem;
+  padding: 6rem 2rem;
   text-align: center;
   border-radius: 12px;
   margin-bottom: 2rem;
+  position: relative;
 }
 
 .hero h1 {
-  font-size: 2.5rem;
+  font-size: 3.5rem;
   margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
 .hero p {
-  font-size: 1.1rem;
-  opacity: 0.9;
-  max-width: 600px;
+  font-size: 1.3rem;
+  opacity: 0.95;
+  max-width: 700px;
   margin: 0 auto;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.hero .subtitle {
+  font-size: 1rem;
+  opacity: 0.8;
+  margin-top: 1rem;
+  font-style: italic;
 }
 
 /* Booking Form */

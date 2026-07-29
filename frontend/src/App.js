@@ -57,7 +57,62 @@ function App() {
             <>
               <section className="hero">
                 <h1>Hotel Vittorio Veneto</h1>
-                <p>Albergo nel cuore di Napoli, a soli 300m da Piazza Garibaldi. Posizione privilegiata nel vivace centro storico, circondato da ristoranti, pizzerie e bar.</p>
+                <p>Nel cuore di Napoli, a soli 300m da Piazza Garibaldi. La tua casa nel capoluogo campano.</p>
+                <p className="subtitle">Via Milano, 96 - Centro Storico di Napoli</p>
+              </section>
+
+              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>Benvenuto a Napoli</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=600&q=80" alt="Costiera Amalfitana" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Costiera Amalfitana</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 1 ora di macchina dall'hotel</p>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600&q=80" alt="Pompei" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Pompei</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 25 minuti di treno</p>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="https://images.unsplash.com/photo-1544550581-5f7ceaf7f992?w=600&q=80" alt="Vesuvio" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Vesuvio</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 20 minuti dall'hotel</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>L'Hotel</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="/images/rooms/doppia-standard.jpg" alt="Camera Doppia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Camere Confortevoli</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>TV, aria condizionata, balcone</p>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="/images/rooms/singola-bagno-privato.png" alt="Camera Singola" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Bagno Privato</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Bagni privati con doccia</p>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
+                    <img src="/images/rooms/tripla-standard.jpg" alt="Camera Tripla" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
+                      <h4 style={{ margin: 0 }}>Per Famiglie</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Camere triple per 3 ospiti</p>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
@@ -98,7 +153,7 @@ function App() {
 
               <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
                 <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '1rem' }}>Dove Siamo</h2>
-                <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '1.5rem' }}>Via Milano, 96 - Napoli (Centro Storico)</p>
+                <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '1.5rem' }}>Via Milano, 96 - Napoli (Centro Storico) - A 300m da Piazza Garibaldi</p>
                 <div style={{ maxWidth: '800px', margin: '0 auto', borderRadius: '8px', overflow: 'hidden' }}>
                   <iframe 
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3019.5!2d14.268!3d40.852!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x133b085c7e7e7e7e%3A0x7e7e7e7e7e7e7e7e!2sVia+Milano%2C+96%2C+Napoli!5e0!3m2!1sit!2sit!4v1234567890"
@@ -113,8 +168,8 @@ function App() {
               </section>
 
               <section className="booking-form">
-                <h2>Le Nostre Camere</h2>
-                <p>Offriamo diverse tipologie di camere per soddisfare ogni esigenza. Dalla camera singola con bagno condiviso alla triple standard con balcone, troverai sicuramente l'alternativa perfetta per il tuo soggiorno a Napoli.</p>
+                <h2>Prenota la Tua Camera</h2>
+                <p>Scegli la tipologia di camera che preferisci e compila il modulo per inviare la tua richiesta di prenotazione.</p>
               </section>
             </>
           } />
