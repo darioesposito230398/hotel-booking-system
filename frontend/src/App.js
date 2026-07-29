@@ -65,24 +65,24 @@ function App() {
                 <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>Benvenuto a Napoli</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
                   <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&q=80" alt="Costiera Amalfitana" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="https://images.unsplash.com/photo-1583946099379-f9c4c8b1aec0?w=600&q=80" alt="Golfo di Napoli" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Costiera Amalfitana</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 1 ora di macchina dall'hotel</p>
+                      <h4 style={{ margin: 0 }}>Golfo di Napoli</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Vista panoramica sul golfo</p>
                     </div>
                   </div>
                   <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=600&q=80" alt="Pompei" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="https://images.unsplash.com/photo-1592150621744-aca64f48394a?w=600&q=80" alt="Castel dell'Ovo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Pompei</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 25 minuti di treno</p>
+                      <h4 style={{ margin: 0 }}>Castel dell'Ovo</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Il più antico castello di Napoli</p>
                     </div>
                   </div>
                   <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=600&q=80" alt="Vesuvio" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=600&q=80" alt="Spaccanapoli" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Vesuvio</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 20 minuti dall'hotel</p>
+                      <h4 style={{ margin: 0 }}>Spaccanapoli</h4>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Il cuore storico di Napoli</p>
                     </div>
                   </div>
                 </div>
