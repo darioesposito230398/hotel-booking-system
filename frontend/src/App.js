@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import axios from 'axios';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import BookingForm from './components/BookingForm';
@@ -13,28 +12,22 @@ const stripePromise = loadStripe('pk_test_your_stripe_publishable_key');
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
-      setUser(JSON.parse(localStorage.getItem('user')));
     }
   }, []);
 
-  const handleLogin = (token, userData) => {
+  const handleLogin = (token) => {
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
-    setUser(userData);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setIsAuthenticated(false);
-    setUser(null);
   };
 
   return (
@@ -83,7 +76,7 @@ function App() {
               isAuthenticated ? (
                 <Navigate to="/admin" />
               ) : (
-                <Login apiUrl={API_URL} onLogin={handleLogin} />
+                <Login apiUrl={API_URL} onLogin={(token) => handleLogin(token)} />
               )
             } />
             

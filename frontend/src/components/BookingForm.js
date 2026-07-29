@@ -24,41 +24,39 @@ const BookingForm = ({ apiUrl }) => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    const fetchRoomTypes = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/room-types`);
+        setRoomTypes(response.data);
+        if (response.data.length > 0) {
+          setFormData(prev => ({ ...prev, roomTypeId: response.data[0].id }));
+        }
+      } catch (err) {
+        console.error('Error fetching room types:', err);
+      }
+    };
     fetchRoomTypes();
-  }, []);
+  }, [apiUrl]);
 
   useEffect(() => {
-    calculatePrice();
-  }, [formData.checkIn, formData.checkOut, formData.roomTypeId]);
-
-  const fetchRoomTypes = async () => {
-    try {
-      const response = await axios.get(`${apiUrl}/room-types`);
-      setRoomTypes(response.data);
-      if (response.data.length > 0) {
-        setFormData(prev => ({ ...prev, roomTypeId: response.data[0].id }));
-      }
-    } catch (err) {
-      console.error('Error fetching room types:', err);
-    }
-  };
-
-  const calculatePrice = () => {
-    if (formData.checkIn && formData.checkOut && formData.roomTypeId) {
-      const checkIn = new Date(formData.checkIn);
-      const checkOut = new Date(formData.checkOut);
-      const diffTime = Math.abs(checkOut - checkIn);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays > 0) {
-        const roomType = roomTypes.find(r => r.id === parseInt(formData.roomTypeId));
-        if (roomType) {
-          setNights(diffDays);
-          setTotalPrice(roomType.base_price * diffDays);
+    const calculatePrice = () => {
+      if (formData.checkIn && formData.checkOut && formData.roomTypeId) {
+        const checkIn = new Date(formData.checkIn);
+        const checkOut = new Date(formData.checkOut);
+        const diffTime = Math.abs(checkOut - checkIn);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) {
+          const roomType = roomTypes.find(r => r.id === parseInt(formData.roomTypeId));
+          if (roomType) {
+            setNights(diffDays);
+            setTotalPrice(roomType.base_price * diffDays);
+          }
         }
       }
-    }
-  };
+    };
+    calculatePrice();
+  }, [formData.checkIn, formData.checkOut, formData.roomTypeId, roomTypes]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

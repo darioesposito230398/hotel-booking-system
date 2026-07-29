@@ -8,35 +8,35 @@ const AdminPanel = ({ apiUrl }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${apiUrl}/booking-requests`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setBookings(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError('Errore nel caricamento delle prenotazioni');
+        setLoading(false);
+      }
+    };
+
+    const fetchPaymentConfig = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${apiUrl}/payment-config`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
+      } catch (err) {
+        console.error('Error fetching payment config:', err);
+      }
+    };
+
     fetchBookings();
     fetchPaymentConfig();
-  }, []);
-
-  const fetchBookings = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${apiUrl}/booking-requests`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setBookings(response.data);
-      setLoading(false);
-    } catch (err) {
-      setError('Errore nel caricamento delle prenotazioni');
-      setLoading(false);
-    }
-  };
-
-  const fetchPaymentConfig = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${apiUrl}/payment-config`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
-    } catch (err) {
-      console.error('Error fetching payment config:', err);
-    }
-  };
+  }, [apiUrl]);
 
   const updatePaymentConfig = async (newConfig) => {
     try {
