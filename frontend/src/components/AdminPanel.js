@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const AdminPanel = ({ apiUrl }) => {
@@ -7,41 +7,41 @@ const AdminPanel = ({ apiUrl }) => {
   const [paymentConfig, setPaymentConfig] = useState('charge_on_confirm');
   const [error, setError] = useState('');
 
+  const fetchBookings = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${apiUrl}/booking-requests`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBookings(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError('Errore nel caricamento delle prenotazioni');
+      setLoading(false);
+    }
+  }, [apiUrl]);
+
+  const fetchPaymentConfig = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${apiUrl}/payment-config`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
+    } catch (err) {
+      console.error('Error fetching payment config:', err);
+    }
+  }, [apiUrl]);
+
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${apiUrl}/booking-requests`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setBookings(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Errore nel caricamento delle prenotazioni');
-        setLoading(false);
-      }
-    };
-
-    const fetchPaymentConfig = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${apiUrl}/payment-config`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
-      } catch (err) {
-        console.error('Error fetching payment config:', err);
-      }
-    };
-
     fetchBookings();
     fetchPaymentConfig();
-  }, [apiUrl]);
+  }, [fetchBookings, fetchPaymentConfig]);
 
   const updatePaymentConfig = async (newConfig) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`${apiUrl}/payment-config`, 
+      await axios.put(`${apiUrl}/payment-config`,
         { payment_action: newConfig },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -55,7 +55,7 @@ const AdminPanel = ({ apiUrl }) => {
     if (window.confirm('Confermare questa prenotazione? Verrà effettuato il pagamento secondo la configurazione attuale.')) {
       try {
         const token = localStorage.getItem('token');
-        await axios.post(`${apiUrl}/booking-requests/${bookingId}/confirm`, 
+        await axios.post(`${apiUrl}/booking-requests/${bookingId}/confirm`,
           { payment_action: paymentConfig },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -70,7 +70,7 @@ const AdminPanel = ({ apiUrl }) => {
     if (window.confirm('Rifiutare questa prenotazione?')) {
       try {
         const token = localStorage.getItem('token');
-        await axios.post(`${apiUrl}/booking-requests/${bookingId}/reject`, 
+        await axios.post(`${apiUrl}/booking-requests/${bookingId}/reject`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -222,13 +222,13 @@ const AdminPanel = ({ apiUrl }) => {
 
               {booking.status === 'pending' && (
                 <div className="booking-card-actions">
-                  <button 
+                  <button
                     onClick={() => handleConfirm(booking.id)}
                     className="btn btn-success"
                   >
                     Conferma
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleReject(booking.id)}
                     className="btn btn-danger"
                   >
