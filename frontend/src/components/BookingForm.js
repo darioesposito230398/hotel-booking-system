@@ -6,7 +6,7 @@ import { useLanguage } from '../i18n';
 const BookingForm = ({ apiUrl }) => {
   const stripe = useStripe();
   const elements = useElements();
-  const { t, lang, roomName, roomDesc } = useLanguage();
+  const { t, roomName, roomDesc } = useLanguage();
   
   const [roomTypes, setRoomTypes] = useState([]);
   const [formData, setFormData] = useState({
