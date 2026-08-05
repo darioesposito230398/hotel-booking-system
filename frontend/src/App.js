@@ -5,6 +5,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import BookingForm from './components/BookingForm';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
+import { LanguageProvider, useLanguage } from './i18n';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -30,23 +31,22 @@ function App() {
     setIsAuthenticated(false);
   };
 
+  const { t, lang, setLang, roomName } = useLanguage();
+
   const HomePage = () => (
     <>
       <section className="hero">
         <div className="hero-text">
-          <span className="eyebrow">Via Milano 96 · Napoli Centro Storico</span>
-          <h1>Dormi nel cuore di Napoli.</h1>
-          <p className="lede">
-            Un albergo accogliente a 300 metri da Piazza Garibaldi, circondato dalle
-            pizzerie e dal rumore vero della città. La tua base per scoprire il golfo.
-          </p>
-          <p className="address-line">Check-in 13:00–19:00 &nbsp;·&nbsp; Check-out entro le 10:00</p>
+          <span className="eyebrow">{t('hero.eyebrow')}</span>
+          <h1>{t('hero.title')}</h1>
+          <p className="lede">{t('hero.lede')}</p>
+          <p className="address-line">{t('hero.address')}</p>
         </div>
         <div className="hero-photo">
           <figure className="postcard">
             <img src="/images/golfo-napoli.jpg" alt="Golfo di Napoli" />
             <figcaption className="postcard-caption">
-              <span>Cartolina dal golfo</span>
+              <span>{t('hero.caption')}</span>
               <span className="stamp">NAPOLI</span>
             </figcaption>
           </figure>
@@ -55,57 +55,54 @@ function App() {
 
       <section className="info-strip">
         <div className="info-item">
-          <div className="info-label">Posizione</div>
-          <div className="info-value">300 m da Piazza Garibaldi</div>
+          <div className="info-label">{t('pos.label')}</div>
+          <div className="info-value">{t('pos.value')}</div>
         </div>
         <div className="info-item">
-          <div className="info-label">Stazione</div>
-          <div className="info-value">Napoli Centrale a 7 minuti a piedi</div>
+          <div className="info-label">{t('station.label')}</div>
+          <div className="info-value">{t('station.value')}</div>
         </div>
         <div className="info-item">
-          <div className="info-label">Voto ospiti</div>
-          <div className="info-value">7,5 su 662 recensioni</div>
+          <div className="info-label">{t('rating.label')}</div>
+          <div className="info-value">{t('rating.value')}</div>
         </div>
       </section>
 
       <section className="section">
         <div className="section-head">
-          <span className="eyebrow">La città intorno</span>
-          <h2>Benvenuto a Napoli</h2>
-          <p>
-            Dalla tua finestra al mare: il golfo, Pompei e il castello più famoso
-            della città, a pochi passi o a un breve viaggio in treno.
-          </p>
+          <span className="eyebrow">{t('city.eyebrow')}</span>
+          <h2>{t('city.title')}</h2>
+          <p>{t('city.p')}</p>
         </div>
         <div className="postcard-grid">
           <figure className="postcard">
             <img src="/images/golfo-napoli.jpg" alt="Golfo di Napoli" />
             <figcaption className="postcard-caption">
-              <span className="postcard-title">Golfo di Napoli</span>
+              <span className="postcard-title">{t('city.golfo.title')}</span>
               <span className="stamp">01</span>
             </figcaption>
             <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
-              La veduta che ti accompagna al mattino, con il Vesuvio all'orizzonte.
+              {t('city.golfo.note')}
             </span>
           </figure>
           <figure className="postcard">
             <img src="/images/pompei.jpg" alt="Pompei" />
             <figcaption className="postcard-caption">
-              <span className="postcard-title">Pompei</span>
+              <span className="postcard-title">{t('city.pompei.title')}</span>
               <span className="stamp">02</span>
             </figcaption>
             <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
-              A 25 minuti di treno, la città romana più visitata al mondo.
+              {t('city.pompei.note')}
             </span>
           </figure>
           <figure className="postcard">
             <img src="/images/maschio-angioino.jpg" alt="Maschio Angioino" />
             <figcaption className="postcard-caption">
-              <span className="postcard-title">Maschio Angioino</span>
+              <span className="postcard-title">{t('city.maschio.title')}</span>
               <span className="stamp">03</span>
             </figcaption>
             <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
-              Il castello aragonese che domina piazza Municipio.
+              {t('city.maschio.note')}
             </span>
           </figure>
         </div>
@@ -113,78 +110,90 @@ function App() {
 
       <section className="section">
         <div className="section-head center">
-          <span className="eyebrow">L'albergo</span>
-          <h2>Le nostre camere</h2>
-          <p>
-            Dalla singola con bagno condiviso alla tripla con balcone. Ogni camera
-            ha TV, scrivania e l'atmosfera del centro storico.
-          </p>
+          <span className="eyebrow">{t('story.eyebrow')}</span>
+          <h2>{t('story.title')}</h2>
+          <p>{t('story.p')}</p>
+        </div>
+        <div className="story-facts">
+          <div className="story-fact">
+            <span className="story-fact-value">{t('story.period.value')}</span>
+            <span className="story-fact-label">{t('story.period.label')}</span>
+          </div>
+          <div className="story-fact">
+            <span className="story-fact-value">1900</span>
+            <span className="story-fact-label">{t('story.building.value')}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head center">
+          <span className="eyebrow">{t('rooms.eyebrow')}</span>
+          <h2>{t('rooms.title')}</h2>
+          <p>{t('rooms.p')}</p>
         </div>
         <div className="room-grid">
           <article className="room-card">
             <img src="/images/rooms/singola-bagno-comune.jpg" alt="Singola bagno condiviso" />
             <div className="room-body">
-              <h4 className="room-name">Singola · Bagno condiviso</h4>
-              <p className="room-desc">TV, scrivania e armadio. Bagno condiviso al piano. 12 m².</p>
+              <h4 className="room-name">{roomName('Singola Bagno Condiviso')}</h4>
+              <p className="room-desc">{t('desc.singola.shared')}</p>
               <div className="room-meta">
-                <span className="room-price">€45 <span className="per-night">/notte</span></span>
-                <span className="room-guests">1 ospite</span>
+                <span className="room-price">€45 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-guests">{t('rooms.guest.1')}</span>
               </div>
             </div>
           </article>
           <article className="room-card">
             <img src="/images/rooms/doppia-standard.jpg" alt="Doppia/Twin bagno condiviso" />
             <div className="room-body">
-              <h4 className="room-name">Doppia · Bagno condiviso</h4>
-              <p className="room-desc">Letto matrimoniale o due letti, balcone e scrivania. 15 m².</p>
+              <h4 className="room-name">{roomName('Doppia/Twin Bagno Condiviso')}</h4>
+              <p className="room-desc">{t('desc.twinshared')}</p>
               <div className="room-meta">
-                <span className="room-price">€55 <span className="per-night">/notte</span></span>
-                <span className="room-guests">2 ospiti</span>
+                <span className="room-price">€55 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-guests">{t('rooms.guest.2')}</span>
               </div>
             </div>
           </article>
           <article className="room-card">
             <img src="/images/rooms/singola-bagno-privato.png" alt="Singola bagno privato" />
             <div className="room-body">
-              <h4 className="room-name">Singola · Bagno privato</h4>
-              <p className="room-desc">Aria condizionata, TV e bagno privato con bidet. 12 m².</p>
+              <h4 className="room-name">{roomName('Singola Bagno Privato')}</h4>
+              <p className="room-desc">{t('desc.singola.priv')}</p>
               <div className="room-meta">
-                <span className="room-price">€60 <span className="per-night">/notte</span></span>
-                <span className="room-guests">1 ospite</span>
+                <span className="room-price">€60 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-guests">{t('rooms.guest.1')}</span>
               </div>
             </div>
           </article>
           <article className="room-card">
             <img src="/images/rooms/doppia-standard.jpg" alt="Doppia standard" />
             <div className="room-body">
-              <h4 className="room-name">Doppia Standard</h4>
-              <p className="room-desc">Bagno privato, TV e balcone affacciato sulla via. 15 m².</p>
+              <h4 className="room-name">{roomName('Doppia Standard')}</h4>
+              <p className="room-desc">{t('desc.doppia')}</p>
               <div className="room-meta">
-                <span className="room-price">€75 <span className="per-night">/notte</span></span>
-                <span className="room-guests">2 ospiti</span>
+                <span className="room-price">€75 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-guests">{t('rooms.guest.2')}</span>
               </div>
             </div>
           </article>
           <article className="room-card">
             <img src="/images/rooms/tripla-standard.jpg" alt="Tripla standard" />
             <div className="room-body">
-              <h4 className="room-name">Tripla Standard</h4>
-              <p className="room-desc">Perfetta per famiglie: matrimoniale più letto singolo. 18 m².</p>
+              <h4 className="room-name">{roomName('Tripla Standard')}</h4>
+              <p className="room-desc">{t('desc.tripla')}</p>
               <div className="room-meta">
-                <span className="room-price">€90 <span className="per-night">/notte</span></span>
-                <span className="room-guests">3 ospiti</span>
+                <span className="room-price">€90 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-guests">{t('rooms.guest.3')}</span>
               </div>
             </div>
           </article>
           <article className="room-card" style={{ borderColor: 'var(--gold)' }}>
             <div className="room-body" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <h4 className="room-name" style={{ fontSize: '1.3rem' }}>Il tuo soggiorno</h4>
-              <p className="room-desc">
-                Controlla le date e invia la richiesta: la reception conferma entro
-                poche ore. Nessun addebito prima della conferma.
-              </p>
+              <h4 className="room-name" style={{ fontSize: '1.3rem' }}>{t('rooms.booking.title')}</h4>
+              <p className="room-desc">{t('rooms.booking.p')}</p>
               <Link to="/prenota" className="btn btn-gold" style={{ marginTop: '0.5rem' }}>
-                Prenota ora
+                {t('rooms.booking.cta')}
               </Link>
             </div>
           </article>
@@ -193,50 +202,50 @@ function App() {
 
       <section className="section">
         <div className="section-head">
-          <span className="eyebrow">Servizi inclusi</span>
-          <h2>Quello che trovi da noi</h2>
+          <span className="eyebrow">{t('services.eyebrow')}</span>
+          <h2>{t('services.title')}</h2>
         </div>
         <div className="services-list">
           <div className="service-item">
             <span className="service-num">01</span>
             <div>
-              <h4>Wi-Fi gratuito</h4>
-              <p>Connessione in tutte le aree comuni</p>
+              <h4>{t('service.wifi.t')}</h4>
+              <p>{t('service.wifi.d')}</p>
             </div>
           </div>
           <div className="service-item">
             <span className="service-num">02</span>
             <div>
-              <h4>Colazione in camera</h4>
-              <p>Su richiesta, ogni mattina</p>
+              <h4>{t('service.breakfast.t')}</h4>
+              <p>{t('service.breakfast.d')}</p>
             </div>
           </div>
           <div className="service-item">
             <span className="service-num">03</span>
             <div>
-              <h4>Deposito bagagli</h4>
-              <p>Libero prima del check-in e dopo il check-out</p>
+              <h4>{t('service.luggage.t')}</h4>
+              <p>{t('service.luggage.d')}</p>
             </div>
           </div>
           <div className="service-item">
             <span className="service-num">04</span>
             <div>
-              <h4>Pulizia giornaliera</h4>
-              <p>Camere e cambio biancheria</p>
+              <h4>{t('service.cleaning.t')}</h4>
+              <p>{t('service.cleaning.d')}</p>
             </div>
           </div>
           <div className="service-item">
             <span className="service-num">05</span>
             <div>
-              <h4>Aria condizionata</h4>
-              <p>Nelle camere con bagno privato</p>
+              <h4>{t('service.ac.t')}</h4>
+              <p>{t('service.ac.d')}</p>
             </div>
           </div>
           <div className="service-item">
             <span className="service-num">06</span>
             <div>
-              <h4>Check-in rapido</h4>
-              <p>Express check-in dalle 13:00</p>
+              <h4>{t('service.checkin.t')}</h4>
+              <p>{t('service.checkin.d')}</p>
             </div>
           </div>
         </div>
@@ -244,12 +253,9 @@ function App() {
 
       <section className="section">
         <div className="section-head center">
-          <span className="eyebrow">Dove siamo</span>
-          <h2>Via Milano 96, Napoli</h2>
-          <p>
-            Nel cuore del centro storico, a 300 metri dalla stazione Piazza Garibaldi
-            e a pochi passi dalle strade più vive della città.
-          </p>
+          <span className="eyebrow">{t('map.eyebrow')}</span>
+          <h2>{t('map.title')}</h2>
+          <p>{t('map.p')}</p>
         </div>
         <div className="map-frame">
           <iframe
@@ -259,7 +265,7 @@ function App() {
             style={{ border: 0 }}
             allowFullScreen=""
             loading="lazy"
-            title="Posizione Hotel Vittorio Veneto"
+            title={t('map.titleAttr')}
           ></iframe>
         </div>
       </section>
@@ -272,18 +278,34 @@ function App() {
         <header className="header">
           <div className="brand">Hotel Vittorio Veneto <span className="brand-city">· Napoli</span></div>
           <nav>
-            <Link to="/">Home</Link>
-            <Link to="/prenota">Prenota</Link>
+            <Link to="/">{t('nav.home')}</Link>
+            <Link to="/prenota">{t('nav.book')}</Link>
             {isAuthenticated ? (
               <>
-                <Link to="/admin">Reception</Link>
+                <Link to="/admin">{t('nav.reception')}</Link>
                 <button onClick={handleLogout} className="btn btn-subtle" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                  Esci
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
-              <Link to="/login">Reception</Link>
+              <Link to="/login">{t('nav.reception')}</Link>
             )}
+            <span className="lang-switch" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={lang === 'it' ? 'lang-btn active' : 'lang-btn'}
+                onClick={() => setLang('it')}
+              >
+                IT
+              </button>
+              <button
+                type="button"
+                className={lang === 'en' ? 'lang-btn active' : 'lang-btn'}
+                onClick={() => setLang('en')}
+              >
+                EN
+              </button>
+            </span>
           </nav>
         </header>
 
@@ -314,11 +336,17 @@ function App() {
 
         <footer className="footer">
           <div className="footer-brand">Hotel Vittorio Veneto</div>
-          <p>Via Milano 96, 80142 Napoli · &copy; 2026 · Tutti i diritti riservati</p>
+          <p>{t('footer.addr')} · &copy; 2026 · {t('footer.rights')}</p>
         </footer>
       </div>
     </Router>
   );
 }
 
-export default App;
+const AppWithLanguage = () => (
+  <LanguageProvider>
+    <App />
+  </LanguageProvider>
+);
+
+export default AppWithLanguage;

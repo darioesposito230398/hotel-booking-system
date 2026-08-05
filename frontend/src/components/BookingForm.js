@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import axios from 'axios';
+import { useLanguage } from '../i18n';
 
 const BookingForm = ({ apiUrl }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const { t, lang, roomName, roomDesc } = useLanguage();
   
   const [roomTypes, setRoomTypes] = useState([]);
   const [formData, setFormData] = useState({
@@ -122,32 +124,29 @@ const BookingForm = ({ apiUrl }) => {
     }
   };
 
-  if (success) {
+if (success) {
     return (
       <div className="success-message">
-        <h3>Richiesta Ricevuta!</h3>
-        <p>Nessun importo è stato addebitato.</p>
-        <p>La prenotazione sarà valida solamente dopo la conferma dell'hotel.</p>
-        <p>Riceverai una comunicazione via email.</p>
+        <h3>{t('success.title')}</h3>
+        <p>{t('success.nocharge')}</p>
+        <p>{t('success.validafter')}</p>
+        <p>{t('success.email')}</p>
       </div>
     );
   }
 
   return (
     <div className="booking-form">
-      <span className="eyebrow">Richiesta di prenotazione</span>
-      <h2>Prenota la tua camera</h2>
-      <p className="form-intro">
-        Scegli le date e i dati della carta. Non ti addebitiamo nulla adesso: la
-        reception conferma prima, il pagamento avviene solo dopo la conferma.
-      </p>
+      <span className="eyebrow">{t('booking.eyebrow')}</span>
+      <h2>{t('booking.title')}</h2>
+      <p className="form-intro">{t('booking.p')}</p>
 
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-group">
-            <label htmlFor="checkIn">Data Check-in</label>
+            <label htmlFor="checkIn">{t('label.checkin')}</label>
             <input
               type="date"
               id="checkIn"
@@ -160,7 +159,7 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="checkOut">Data Check-out</label>
+            <label htmlFor="checkOut">{t('label.checkout')}</label>
             <input
               type="date"
               id="checkOut"
@@ -173,7 +172,7 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="roomTypeId">Tipologia Camera</label>
+            <label htmlFor="roomTypeId">{t('label.roomtype')}</label>
             <select
               id="roomTypeId"
               name="roomTypeId"
@@ -183,7 +182,7 @@ const BookingForm = ({ apiUrl }) => {
             >
               {roomTypes.map(room => (
                 <option key={room.id} value={room.id}>
-                  {room.name} - €{room.base_price}/notte
+                  {roomName(room.name)} - €{room.base_price}{t('rooms.perNight')}
                 </option>
               ))}
             </select>
@@ -192,18 +191,21 @@ const BookingForm = ({ apiUrl }) => {
           {formData.roomTypeId && (
             <div className="room-preview">
               <img
-                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)}
+                src={getRoomPhoto(roomName(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name))}
                 alt="Camera selezionata"
               />
               <div className="room-preview-info">
-                <h4>{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name}</h4>
-                <p>{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description}</p>
+                <h4>{roomName(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)}</h4>
+                <p>{roomDesc(
+                  roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description,
+                  roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name
+                )}</p>
               </div>
             </div>
           )}
 
           <div className="form-group">
-            <label htmlFor="numGuests">Numero Ospiti</label>
+            <label htmlFor="numGuests">{t('label.guests')}</label>
             <select
               id="numGuests"
               name="numGuests"
@@ -218,7 +220,7 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestName">Nome e Cognome</label>
+            <label htmlFor="guestName">{t('label.name')}</label>
             <input
               type="text"
               id="guestName"
@@ -231,7 +233,7 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestEmail">Email</label>
+            <label htmlFor="guestEmail">{t('label.email')}</label>
             <input
               type="email"
               id="guestEmail"
@@ -244,7 +246,7 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestPhone">Telefono</label>
+            <label htmlFor="guestPhone">{t('label.phone')}</label>
             <input
               type="tel"
               id="guestPhone"
@@ -256,13 +258,13 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="note">Note o Richieste Speciali</label>
+            <label htmlFor="note">{t('label.notes')}</label>
             <textarea
               id="notes"
               name="notes"
               value={formData.notes}
               onChange={handleInputChange}
-              placeholder="Es: Camera vista mare, cuscini extra, etc."
+              placeholder={t('notes.ph')}
             />
           </div>
         </div>
@@ -272,17 +274,15 @@ const BookingForm = ({ apiUrl }) => {
             <div>
               <div className="price-total">€{totalPrice.toFixed(2)}</div>
               <div className="price-breakdown">
-                {nights} notte{nights !== 1 ? 'i' : ''} × €{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.base_price}
+                {nights} {nights === 1 ? t('night.singular') : t('night.plural')} × €{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.base_price}
               </div>
             </div>
-            <div className="price-avviso">
-              Nessun addebito ora. Il pagamento avviene solo dopo la conferma dell'hotel.
-            </div>
+            <div className="price-avviso">{t('price.nocharge')}</div>
           </div>
         )}
 
         <div className="form-group">
-          <label>Dati Carta di Credito</label>
+          <label>{t('label.card')}</label>
           <div className="stripe-element">
             <CardElement
               options={{
@@ -295,14 +295,14 @@ const BookingForm = ({ apiUrl }) => {
                     },
                   },
                   invalid: {
-                    color: '#b03a2e',
+                    color: '#b03c2e',
                   },
                 },
               }}
             />
           </div>
           <small className="stripe-note">
-            I tuoi dati sono al sicuro. La carta viene tokenizzata e non salvata sul nostro server.
+            {t('stripe.note')}
           </small>
         </div>
 
@@ -312,7 +312,7 @@ const BookingForm = ({ apiUrl }) => {
           disabled={!stripe || loading}
           style={{ marginTop: '1.25rem' }}
         >
-          {loading ? 'Elaborazione in corso...' : 'Invia richiesta di prenotazione'}
+          {loading ? t('booking.loading') : t('booking.submit')}
         </button>
       </form>
     </div>

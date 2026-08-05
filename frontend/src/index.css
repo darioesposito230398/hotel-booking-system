@@ -88,6 +88,31 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--gold-soft);
 }
 
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: 0.5rem;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lang-btn.active {
+  background: var(--gold);
+  color: #fff;
+}
+
 /* ---------- Main ---------- */
 .main-content {
   flex: 1;
@@ -280,6 +305,42 @@ h1, h2, h3, h4, h5, h6 {
 
 .section-head.center .eyebrow::before {
   display: none;
+}
+
+/* ---------- History / family section ---------- */
+.story-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+.story-fact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--mist);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.story-fact-value {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.story-fact-label {
+  font-family: 'Karla', sans-serif;
+  font-size: 0.85rem;
+  color: rgba(27, 36, 48, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* ---------- Naples postcards grid ---------- */

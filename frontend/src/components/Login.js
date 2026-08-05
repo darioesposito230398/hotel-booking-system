@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../i18n';
 
 const Login = ({ apiUrl, onLogin }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,13 +35,13 @@ const Login = ({ apiUrl, onLogin }) => {
 
   return (
     <div className="login-form">
-      <h2>{isRegister ? 'Registrazione Reception' : 'Accesso Reception'}</h2>
+      <h2>{isRegister ? t('login.register.title') : t('login.title')}</h2>
       
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
         <div className="form-group" style={{ marginBottom: '1rem' }}>
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email">{t('label.email')}</label>
           <input
             type="email"
             id="email"
@@ -52,7 +54,7 @@ const Login = ({ apiUrl, onLogin }) => {
         </div>
 
         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">{t('login.password')}</label>
           <input
             type="password"
             id="password"
@@ -70,7 +72,7 @@ const Login = ({ apiUrl, onLogin }) => {
           disabled={loading}
           style={{ width: '100%', marginBottom: '1rem' }}
         >
-          {loading ? 'Accesso in corso...' : (isRegister ? 'Registrati' : 'Accedi')}
+          {loading ? t('login.loading') : (isRegister ? t('login.register.cta') : t('login.submit'))}
         </button>
 
         <button 
@@ -79,7 +81,7 @@ const Login = ({ apiUrl, onLogin }) => {
           className="btn btn-secondary"
           style={{ width: '100%' }}
         >
-          {isRegister ? 'Hai già un account? Accedi' : 'Non hai un account? Registrati'}
+          {isRegister ? t('login.haveAccount') : t('login.noAccount')}
         </button>
       </form>
     </div>
