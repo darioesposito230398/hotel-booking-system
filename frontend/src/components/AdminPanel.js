@@ -608,6 +608,20 @@ const AdminPanel = ({ apiUrl }) => {
                     <span className="detail-value">€{booking.total_price}</span>
                   </div>
                   <div className="detail-item">
+                    <span className="detail-label">Prima notte (prepagata)</span>
+                    <span className="detail-value">
+                      {booking.first_night_amount ? `€${booking.first_night_amount}` : '—'}
+                    </span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Saldo in struttura</span>
+                    <span className="detail-value">
+                      {booking.first_night_amount
+                        ? `€${(parseFloat(booking.total_price) - parseFloat(booking.first_night_amount)).toFixed(2)}`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="detail-item">
                     <span className="detail-label">Data Richiesta</span>
                     <span className="detail-value">{formatDateTime(booking.created_at)}</span>
                   </div>

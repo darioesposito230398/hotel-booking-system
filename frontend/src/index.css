@@ -625,25 +625,29 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Price display */
 .price-display {
-  background: var(--bay-deep);
-  color: white;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--gold);
   padding: 1.6rem 2rem;
   border-radius: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 1.75rem 0;
+  gap: 1.25rem;
 }
 
 .price-display .price-total {
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 2rem;
-  font-weight: 600;
+  font-size: 2.4rem;
+  font-weight: 700;
   color: var(--bay);
+  line-height: 1.1;
 }
 
 .price-display .price-original {
-  font-size: 0.95rem;
+  font-family: 'Karla', sans-serif;
+  font-size: 1.05rem;
   color: rgba(27, 36, 48, 0.5);
   text-decoration: line-through;
 }
@@ -669,14 +673,31 @@ h1, h2, h3, h4, h5, h6 {
 
 .price-display .price-breakdown {
   font-size: 0.85rem;
+  color: var(--ink);
   opacity: 0.75;
 }
 
 .price-display .price-avviso {
-  font-size: 0.78rem;
-  opacity: 0.6;
-  max-width: 24ch;
+  font-size: 0.82rem;
+  opacity: 0.7;
+  max-width: 22ch;
   text-align: right;
+  color: var(--ink);
+}
+
+.price-firstnight {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(194, 150, 45, 0.5);
+  font-size: 0.82rem;
+  color: var(--ink);
+  opacity: 0.85;
+  max-width: 30ch;
+}
+
+.price-firstnight strong {
+  color: var(--bay);
+  font-weight: 700;
 }
 
 /* Stripe */

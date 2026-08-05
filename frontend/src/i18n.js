@@ -86,6 +86,7 @@ const translations = {
     'desc.tripla': 'Perfetta per famiglie: matrimoniale più letto singolo. 18 m².',
 
     'booking.eyebrow': 'Richiesta di prenotazione',
+    'booking.quote': 'Calcola preventivo',
     'booking.title': 'Prenota la tua camera',
     'booking.p':
       'Scegli le date e i dati della carta. Non ti addebitiamo nulla adesso: la reception conferma prima, il pagamento avviene solo dopo la conferma.',
@@ -105,6 +106,8 @@ const translations = {
     'price.nocharge': 'Nessun addebito ora. Il pagamento avviene solo dopo la conferma dell\u2019hotel.',
     'price.dynamic': 'tariffa per giorno',
     'price.discount': 'sconto diretto sul sito',
+    'price.firstnight.pre': 'Addebito alla carta oggi:',
+    'price.firstnight.post': '(prima notte). Il resto si paga in struttura.',
     'night.singular': 'notte',
     'night.plural': 'notti',
     'stripe.note': 'I tuoi dati sono al sicuro. La carta viene tokenizzata e non salvata sul nostro server.',
@@ -208,6 +211,7 @@ const translations = {
     'desc.tripla': 'Perfect for families: double plus a single bed. 18 m².',
 
     'booking.eyebrow': 'Booking request',
+    'booking.quote': 'Get a quote',
     'booking.title': 'Book your room',
     'booking.p':
       'Choose the dates and card details. We won\u2019t charge you anything now: the reception confirms first and payment happens only after confirmation.',
@@ -227,6 +231,8 @@ const translations = {
     'price.nocharge': 'No charge now. Payment happens only after hotel confirmation.',
     'price.dynamic': 'per-day rate',
     'price.discount': 'direct booking discount',
+    'price.firstnight.pre': 'Card charge today:',
+    'price.firstnight.post': '(first night). The balance is paid at the property.',
     'night.singular': 'night',
     'night.plural': 'nights',
     'stripe.note': 'Your details are safe. The card is tokenized and never stored on our server.',

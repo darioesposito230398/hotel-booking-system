@@ -21,8 +21,10 @@ const BookingForm = ({ apiUrl }) => {
   });
   const [totalPrice, setTotalPrice] = useState(0);
   const [originalTotal, setOriginalTotal] = useState(0);
+  const [firstNightAmount, setFirstNightAmount] = useState(0);
   const [discount, setDiscount] = useState(0.1);
   const [nights, setNights] = useState(0);
+  const [hasQuote, setHasQuote] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -42,29 +44,30 @@ const BookingForm = ({ apiUrl }) => {
     fetchRoomTypes();
   }, [apiUrl]);
 
-  useEffect(() => {
-    const fetchQuote = async () => {
-      if (!formData.checkIn || !formData.checkOut || !formData.roomTypeId) {
-        return;
-      }
-      try {
-        const response = await axios.get(`${apiUrl}/quote`, {
-          params: {
-            roomTypeId: formData.roomTypeId,
-            checkIn: formData.checkIn,
-            checkOut: formData.checkOut
-          }
-        });
-        setNights(response.data.nights);
-        setOriginalTotal(response.data.total);
-        setTotalPrice(response.data.discountedTotal);
-        setDiscount(response.data.discount || 0.1);
-      } catch (err) {
-        console.error('Error fetching quote:', err);
-      }
-    };
-    fetchQuote();
-  }, [formData.checkIn, formData.checkOut, formData.roomTypeId, apiUrl]);
+  const calculateQuote = async () => {
+    if (!formData.checkIn || !formData.checkOut || !formData.roomTypeId) {
+      setError('Inserisci le date e la tipologia di camera');
+      return;
+    }
+    setError('');
+    try {
+      const response = await axios.get(`${apiUrl}/quote`, {
+        params: {
+          roomTypeId: formData.roomTypeId,
+          checkIn: formData.checkIn,
+          checkOut: formData.checkOut
+        }
+      });
+      setNights(response.data.nights);
+      setOriginalTotal(response.data.total);
+      setTotalPrice(response.data.discountedTotal);
+      setFirstNightAmount(response.data.firstNightAmount || 0);
+      setDiscount(response.data.discount || 0.1);
+      setHasQuote(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Errore nel calcolo del preventivo');
+    }
+  };
 
   const getRoomPhoto = (room) => {
     if (room?.photo) {
@@ -278,19 +281,29 @@ if (success) {
           </div>
         </div>
 
-        {totalPrice > 0 && (
+        <button
+          type="button"
+          className="btn btn-gold btn-block"
+          onClick={calculateQuote}
+          style={{ marginTop: '0.5rem' }}
+        >
+          {t('booking.quote')}
+        </button>
+
+        {hasQuote && totalPrice > 0 && (
           <div className="price-display">
             <div>
               <div className="price-breakdown">
                 {nights} {nights === 1 ? t('night.singular') : t('night.plural')} · {t('price.dynamic')}
               </div>
-              <div className="price-original">
-                €{originalTotal.toFixed(2)}
-              </div>
+              <div className="price-original">€{originalTotal.toFixed(2)}</div>
               <div className="price-total">€{totalPrice.toFixed(2)}</div>
               <div className="price-discount-line">
                 <span className="price-discount-badge">–{Math.round(discount * 100)}%</span>
                 {t('price.discount')}
+              </div>
+              <div className="price-firstnight">
+                {t('price.firstnight.pre')} <strong>€{firstNightAmount.toFixed(2)}</strong> {t('price.firstnight.post')}
               </div>
             </div>
             <div className="price-avviso">{t('price.nocharge')}</div>

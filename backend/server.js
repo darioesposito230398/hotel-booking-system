@@ -71,6 +71,7 @@ async function initDatabase() {
         room_type_id INTEGER REFERENCES room_types(id),
         num_guests INTEGER NOT NULL,
         total_price DECIMAL(10,2) NOT NULL,
+        first_night_amount DECIMAL(10,2),
         notes TEXT,
         stripe_payment_method_id VARCHAR(255),
         stripe_customer_id VARCHAR(255),
@@ -106,6 +107,7 @@ async function initDatabase() {
 
         // Ensure photo column exists on existing tables
     await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS first_night_amount DECIMAL(10,2)');
 
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
@@ -232,7 +234,9 @@ app.get('/api/quote', async (req, res) => {
   try {
     const { roomTypeId, checkIn, checkOut } = req.query;
     const result = await getEffectivePrice(roomTypeId, checkIn, checkOut);
-    res.json(result);
+    const firstNight = result.days.length > 0 ? result.days[0].price : 0;
+    const firstNightAmount = Math.round(firstNight * (1 - result.discount) * 100) / 100;
+    res.json({ ...result, firstNight, firstNightAmount });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }
@@ -372,25 +376,32 @@ app.delete('/api/room-types/:id', authenticateToken, async (req, res) => {
 });
 
 // Stripe payment method tokenization
+// La carta viene addebitata SOLO per la prima notte; il resto si paga in struttura.
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { roomTypeId, checkIn, checkOut, numGuests } = req.body;
 
     // Calculate total price (per-day, with overrides) and apply discount
-    const { total, discountedTotal } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    const { total, discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
 
-    // Create a PaymentIntent with the discounted amount but don't charge yet
+    // Importo addebitato = solo la prima notte, scontata
+    const firstNightFull = days.length > 0 ? days[0].price : 0;
+    const firstNightAmount = Math.round(firstNightFull * (1 - discount) * 100) / 100;
+
+    // Create a PaymentIntent with the first-night amount but don't charge yet
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(discountedTotal * 100), // Stripe uses cents
+      amount: Math.round(firstNightAmount * 100), // Stripe uses cents
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
     });
 
     res.json({
       clientSecret: paymentIntent.client_secret,
-      totalPrice: discountedTotal,
+      firstNightAmount,
+      totalPrice: firstNightAmount,
       originalTotal: total,
-      discount: BOOKING_DISCOUNT,
+      discountedTotal,
+      discount,
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -410,7 +421,10 @@ app.post('/api/booking-requests', async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     // Calculate total price (per-day, with overrides) and apply discount
-    const { discountedTotal: totalPrice, nights } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    const { discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    const nights = days.length;
+    const firstNightFull = days.length > 0 ? days[0].price : 0;
+    const firstNightAmount = Math.round(firstNightFull * (1 - discount) * 100) / 100;
     
     // Create Stripe customer and attach payment method
     const customer = await stripe.customers.create({
@@ -425,13 +439,15 @@ app.post('/api/booking-requests', async (req, res) => {
       INSERT INTO booking_requests (
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
-        total_price, notes, stripe_payment_method_id, stripe_customer_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        total_price, first_night_amount, notes,
+        stripe_payment_method_id, stripe_customer_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
-      totalPrice, notes, paymentIntent.payment_method, customer.id
+      discountedTotal, firstNightAmount, notes,
+      paymentIntent.payment_method, customer.id
     ]);
     
     res.status(201).json(result.rows[0]);
@@ -513,11 +529,16 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
       return res.status(400).json({ error: 'Booking already processed' });
     }
     
+    // Importo addebitato = solo la prima notte (il resto si paga in struttura)
+    const chargeAmount = booking.first_night_amount
+      ? parseFloat(booking.first_night_amount)
+      : parseFloat(booking.total_price);
+
     // Process payment based on config
     if (payment_action === 'charge_on_confirm') {
-      // Charge the customer
+      // Charge the customer (solo prima notte)
       await stripe.paymentIntents.create({
-        amount: Math.round(booking.total_price * 100),
+        amount: Math.round(chargeAmount * 100),
         currency: 'eur',
         customer: booking.stripe_customer_id,
         payment_method: booking.stripe_payment_method_id,
@@ -530,9 +551,9 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
         ['confirmed', 'charged', id]
       );
     } else if (payment_action === 'authorize_only') {
-      // Just authorize (pre-auth)
+      // Just authorize (pre-auth) - prima notte
       await stripe.paymentIntents.create({
-        amount: Math.round(booking.total_price * 100),
+        amount: Math.round(chargeAmount * 100),
         currency: 'eur',
         customer: booking.stripe_customer_id,
         payment_method: booking.stripe_payment_method_id,
