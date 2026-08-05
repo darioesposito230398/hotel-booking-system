@@ -30,15 +30,17 @@ const Login = ({ apiUrl, onLogin }) => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autoComplete="off">
         <div className="form-group" style={{ marginBottom: '1rem' }}>
           <label htmlFor="email">{t('label.email')}</label>
           <input
             type="email"
             id="email"
+            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="info@hotelvittorioveneto.com"
+            placeholder=""
+            autoComplete="off"
             required
             style={{ width: '100%', marginTop: '0.5rem' }}
           />
@@ -49,9 +51,11 @@ const Login = ({ apiUrl, onLogin }) => {
           <input
             type="password"
             id="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder=""
+            autoComplete="new-password"
             required
             style={{ width: '100%', marginTop: '0.5rem' }}
           />

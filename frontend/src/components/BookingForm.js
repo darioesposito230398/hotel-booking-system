@@ -25,6 +25,28 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   const [hasQuote, setHasQuote] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paypal');
   const [bonificoInfo, setBonificoInfo] = useState({});
+  const [idDocument, setIdDocument] = useState('');
+  const [idDocumentName, setIdDocumentName] = useState('');
+
+  const handleIdDocument = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Il documento non deve superare 5 MB.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setIdDocument(reader.result);
+      setIdDocumentName(file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const isFormComplete = () =>
+    Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
+      formData.guestName && formData.guestEmail && idDocument);
 
   useEffect(() => {
     const fetchBonificoInfo = async () => {
@@ -108,6 +130,7 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     try {
       await axios.post(`${apiUrl}/booking-requests`, {
         ...formData,
+        idDocument,
         paymentMethod: 'bonifico'
       });
       setSuccess(true);
@@ -124,6 +147,7 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     try {
       await axios.post(`${apiUrl}/booking-requests`, {
         ...formData,
+        idDocument,
         paymentMethod: 'paypal',
         paypalOrderId: data.orderID
       });
@@ -208,7 +232,7 @@ if (success) {
             >
               {roomTypes.map(room => (
                 <option key={room.id} value={room.id}>
-                  {roomName(room.name)} - €{room.base_price}{t('rooms.perNight')}
+                  {roomName(room.name)}
                 </option>
               ))}
             </select>
@@ -281,6 +305,23 @@ if (success) {
               onChange={handleInputChange}
               placeholder="+39 123 456 7890"
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="idDocument">{t('label.idDocument')}</label>
+            <input
+              type="file"
+              id="idDocument"
+              name="idDocument"
+              accept="image/*,.pdf"
+              onChange={handleIdDocument}
+              required
+            />
+            {idDocumentName ? (
+              <small className="stripe-note">{t('idDocument.uploaded')}: {idDocumentName}</small>
+            ) : (
+              <small className="stripe-note">{t('idDocument.hint')}</small>
+            )}
           </div>
 
           <div className="form-group">
@@ -379,7 +420,11 @@ if (success) {
           </button>
         )}
 
-        {paymentMethod === 'paypal' && (
+        {paymentMethod === 'paypal' && !isFormComplete() && (
+          <p className="paypal-loading" style={{ marginTop: '1.25rem' }}>{t('booking.completeFields')}</p>
+        )}
+
+        {paymentMethod === 'paypal' && isFormComplete() && (
           <div className="paypal-block" style={{ marginTop: '1.25rem' }}>
             {!paypalClientId ? (
               <p className="paypal-loading">{t('paypal.notConfigured')}</p>

@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 let stripe;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -20,6 +21,36 @@ const PAYPAL_BASE = process.env.PAYPAL_MODE === 'live'
   : 'https://api-m.sandbox.paypal.com';
 
 const PAYPAL_CONFIRM_HOURS = parseInt(process.env.PAYPAL_CONFIRM_HOURS || '24', 10);
+
+// Email (SMTP). Se non configurato, le email vengono salvate nei log.
+const SMTP = {
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '465', 10),
+  user: process.env.SMTP_USER,
+  pass: process.env.SMTP_PASS,
+  from: process.env.SMTP_FROM || process.env.SMTP_USER || 'Hotel Vittorio Veneto <info@hotelvittorioveneto.com>'
+};
+let smtpTransporter = null;
+function getTransporter() {
+  if (!SMTP.host || !SMTP.user || !SMTP.pass) return null;
+  if (!smtpTransporter) {
+    smtpTransporter = nodemailer.createTransport({
+      host: SMTP.host,
+      port: SMTP.port,
+      secure: SMTP.port === 465,
+      auth: { user: SMTP.user, pass: SMTP.pass }
+    });
+  }
+  return smtpTransporter;
+}
+async function sendEmail(to, subject, html) {
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[EMAIL LOG] (SMTP non configurato)\nA: ${to}\nOggetto: ${subject}\n${html}\n`);
+    return;
+  }
+  await t.sendMail({ from: SMTP.from, to, subject, html });
+}
 
 let paypalTokenCache = null;
 let paypalTokenExpiry = 0;
@@ -136,6 +167,115 @@ async function paypalVoidAuth(authId) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ---- Helper email / descrizione prenotazione ----
+function fmtMoney(n) {
+  return '€' + (parseFloat(n) || 0).toFixed(2);
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function nightsBetween(checkIn, checkOut) {
+  return Math.max(0, Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000));
+}
+
+async function bookingForEmail(id) {
+  const r = await pool.query(`
+    SELECT br.*, rt.name AS room_type_name
+    FROM booking_requests br
+    JOIN room_types rt ON br.room_type_id = rt.id
+    WHERE br.id = $1
+  `, [id]);
+  return r.rows[0];
+}
+
+function bookingHtml(booking) {
+  const nights = nightsBetween(booking.check_in, booking.check_out);
+  const balance = Math.max(0, (parseFloat(booking.total_price) || 0) - (parseFloat(booking.first_night_amount) || 0));
+  const method = booking.payment_method === 'bonifico' ? 'Bonifico istantaneo' : 'PayPal';
+  const rows = [
+    ['Nome e cognome', booking.guest_name],
+    ['Email', booking.guest_email],
+    ['Telefono', booking.guest_phone || 'Non fornito'],
+    ['Camera', booking.room_type_name],
+    ['Check-in', fmtDate(booking.check_in)],
+    ['Check-out', fmtDate(booking.check_out)],
+    ['Notti', String(nights)],
+    ['Ospiti', String(booking.num_guests)],
+    ['Totale soggiorno', fmtMoney(booking.total_price)],
+    ['Acconto prima notte', booking.first_night_amount ? fmtMoney(booking.first_night_amount) : '—'],
+    ['Saldo in struttura', balance > 0 ? fmtMoney(balance) : '—'],
+    ['Metodo di pagamento', method],
+    ['Riferimento prenotazione', '#' + booking.id]
+  ];
+  if (booking.notes) rows.push(['Note del cliente', booking.notes]);
+
+  let list = '';
+  rows.forEach(([k, v]) => {
+    list += `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#555;white-space:nowrap"><strong>${k}</strong></td><td style="padding:8px 12px;border-bottom:1px solid #eee">${v || ''}</td></tr>`;
+  });
+
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#1b2430;max-width:600px;margin:0 auto">
+      <h2 style="color:#0d3b2e">Hotel Vittorio Veneto · Napoli</h2>
+      <table style="width:100%;border-collapse:collapse;margin-top:14px">${list}</table>
+    </div>`;
+}
+
+// Rifiuto / non confermata
+async function sendRejectionEmail(booking) {
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1b2430;max-width:600px;margin:0 auto">
+    <h2 style="color:#0d3b2e">Prenotazione non confermata</h2>
+    <p>Ciao <strong>${booking.guest_name}</strong>,</p>
+    <p>purtroppo non possiamo confermare la tua prenotazione. Nessun addebito è stato effettuato e, se avevi effettuato un pagamento, l'importo è stato trattenuto/rilasciato come previsto.</p>
+    ${bookingHtml(booking)}
+    <p>Per qualsiasi domanda scrivici a <strong>info@hotelvittorioveneto.com</strong>.</p>
+  </div>`;
+  await sendEmail(booking.guest_email, 'Prenotazione non confermata - Hotel Vittorio Veneto', html);
+}
+
+// Bonifico: invia IBAN e chiede di effettuare il bonifico
+async function sendIbanEmail(booking) {
+  const r = await pool.query("SELECT config_key, config_value FROM payment_config WHERE config_key IN ('bonifico_iban','bonifico_intestatario')");
+  const info = {};
+  r.rows.forEach(row => { info[row.config_key] = row.config_value; });
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1b2430;max-width:600px;margin:0 auto">
+    <h2 style="color:#0d3b2e">Pagamento con bonifico istantaneo</h2>
+    <p>Ciao <strong>${booking.guest_name}</strong>,</p>
+    <p>la tua richiesta è stata <strong>pre-confermata</strong>. Per completare il pagamento dell'acconto della prima notte effettua un <strong>bonifico istantaneo</strong> a:</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px">
+      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>A favore di</strong></td><td style="padding:8px 12px;border:1px solid #eee">${info.bonifico_intestatario || '—'}</td></tr>
+      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>IBAN</strong></td><td style="padding:8px 12px;border:1px solid #eee;font-size:16px;letter-spacing:1px">${info.bonifico_iban || 'I dati bancari verranno inviati a breve.'}</td></tr>
+      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>Importo da versare</strong></td><td style="padding:8px 12px;border:1px solid #eee">${fmtMoney(booking.first_night_amount)}</td></tr>
+      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>Riferimento</strong></td><td style="padding:8px 12px;border:1px solid #eee">Prenotazione #${booking.id}</td></tr>
+    </table>
+    <p>Una volta ricevuto il pagamento, confermeremo definitivamente la prenotazione.</p>
+    ${bookingHtml(booking)}
+    <p>Per l'orario e le istruzioni di check-in resta valido quanto indicato in questa email: se arrivi dopo le 19:00 scrivi a <strong>info@hotelvittorioveneto.com</strong> con l'orario di arrivo e ti forniremo le istruzioni per il check-in a distanza.</p>
+  </div>`;
+  await sendEmail(booking.guest_email, 'Acconto prima notte - Bonifico - Hotel Vittorio Veneto', html);
+}
+
+// Conferma definitiva
+async function sendConfirmationEmail(booking) {
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#1b2430;max-width:600px;margin:0 auto">
+    <h2 style="color:#0d3b2e">Prenotazione confermata!</h2>
+    <p>Ciao <strong>${booking.guest_name}</strong>,</p>
+    <p>La tua prenotazione è stata <strong>confermata</strong>. Grazie per aver scelto l'Hotel Vittorio Veneto.</p>
+    ${bookingHtml(booking)}
+    <h3 style="color:#0d3b2e;margin-top:24px">Informazioni utili e regole</h3>
+    <ul style="line-height:1.7">
+      <li><strong>Check-in</strong> dalle 14:00 · <strong>Check-out</strong> entro le 11:00.</li>
+      <li>Se arrivi <strong>dopo le 19:00</strong>, scrivi a <strong>info@hotelvittorioveneto.com</strong> indicando l'orario di arrivo: ti invieremo tutte le istruzioni per il <strong>check-in a distanza</strong>.</li>
+      <li>Il saldo del soggiorno si paga in struttura (contanti o carta all'arrivo).</li>
+      <li>Al check-in è richiesto un documento d'identità valido.</li>
+      <li>Per eventuali modifiche o cancellazioni contattaci a <strong>info@hotelvittorioveneto.com</strong>.</li>
+    </ul>
+    <p>Buon soggiorno!<br/>Hotel Vittorio Veneto · Via Milano, 96 · Napoli</p>
+  </div>`;
+  await sendEmail(booking.guest_email, 'Prenotazione confermata - Hotel Vittorio Veneto', html);
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -193,6 +333,7 @@ async function initDatabase() {
         total_price DECIMAL(10,2) NOT NULL,
         first_night_amount DECIMAL(10,2),
         payment_method VARCHAR(20) DEFAULT 'card',
+        id_document TEXT,
         notes TEXT,
         stripe_payment_method_id VARCHAR(255),
         stripe_customer_id VARCHAR(255),
@@ -235,6 +376,7 @@ async function initDatabase() {
     await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS first_night_amount DECIMAL(10,2)');
     await client.query("ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'card'");
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS id_document TEXT');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_order_id VARCHAR(128)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_auth_id VARCHAR(128)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_capture_id VARCHAR(128)');
@@ -251,6 +393,13 @@ async function initDatabase() {
         ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3, 'tripla-standard.jpg');
       `);
     }
+
+    // Remove any trailing price text from room names (e.g. "Singola Bagno Condiviso 45 euro")
+    await client.query(`
+      UPDATE room_types
+      SET name = TRIM(REGEXP_REPLACE(name, '[[:space:]]*[€eE0-9.,]+[[:space:]]*(€|euro|Euro|EURO)?[[:space:]]*$', ''))
+      WHERE name ~ '[[:space:]]+[€0-9][0-9.,]*(€|euro|Euro|EURO)?$'
+    `);
 
     console.log('Database initialized successfully');
   } finally {
@@ -526,8 +675,12 @@ app.post('/api/booking-requests', async (req, res) => {
     const {
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
-      notes, paymentMethod, paypalOrderId
+      notes, paymentMethod, paypalOrderId, idDocument
     } = req.body;
+
+    if (!guestName || !guestEmail || !checkIn || !checkOut || !roomTypeId || !idDocument) {
+      return res.status(400).json({ error: 'Compila tutti i campi obbligatori, incluso il documento d\'identità.' });
+    }
 
     // Calculate total price (per-day, with overrides) and apply discount
     const { discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
@@ -540,14 +693,14 @@ app.post('/api/booking-requests', async (req, res) => {
         INSERT INTO booking_requests (
           guest_name, guest_email, guest_phone,
           check_in, check_out, room_type_id, num_guests,
-          total_price, first_night_amount, notes,
+          total_price, first_night_amount, id_document, notes,
           payment_method, payment_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `, [
         guestName, guestEmail, guestPhone,
         checkIn, checkOut, roomTypeId, numGuests,
-        discountedTotal, firstNightAmount, notes,
+        discountedTotal, firstNightAmount, idDocument, notes,
         'bonifico', 'bonifico'
       ]);
       return res.status(201).json(result.rows[0]);
@@ -572,14 +725,14 @@ app.post('/api/booking-requests', async (req, res) => {
       INSERT INTO booking_requests (
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
-        total_price, first_night_amount, notes,
+        total_price, first_night_amount, id_document, notes,
         payment_method, payment_status, paypal_order_id, paypal_auth_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
-      discountedTotal, firstNightAmount, notes,
+      discountedTotal, firstNightAmount, idDocument, notes,
       'paypal', 'authorized', paypalOrderId, authId
     ]);
 
@@ -661,13 +814,16 @@ app.put('/api/payment-config', authenticateToken, async (req, res) => {
 
 // Confirm booking request
 // PayPal: la trattenuta viene ADDEBITATA solo adesso (capture). Il cliente non ha pagato prima.
-// Bonifico: l'amministratore verifica l'arrivo del pagamento e conferma.
+// Bonifico in 2 passi:
+//   step='preconfirm' -> invia email con IBAN, la prenotazione resta in attesa ('preconfirmed')
+//   step='final'      -> verifica bonifico, conferma definitiva + email di conferma
 app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
     const { id } = req.params;
+    const { step } = req.body;
     
     // Get booking request
     const bookingResult = await client.query(
@@ -682,18 +838,38 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
     
     const booking = bookingResult.rows[0];
     
-    if (booking.status !== 'pending') {
+    if (!['pending', 'preconfirmed'].includes(booking.status)) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Booking already processed' });
     }
 
     if (booking.payment_method === 'bonifico') {
-      // Pagamento verificato manualmente dall'amministratore
+      if (step === 'preconfirm') {
+        if (booking.status !== 'pending') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'IBAN già inviato' });
+        }
+        await client.query(
+          'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['preconfirmed', id]
+        );
+        await client.query('COMMIT');
+        // Email con IBAN (fuori transazione)
+        try { await sendIbanEmail(booking); } catch (e) { console.error('Errore email IBAN:', e.message); }
+        return res.json({ message: 'IBAN inviato al cliente, prenotazione in attesa del bonifico' });
+      }
+
+      // step final
+      if (booking.status !== 'preconfirmed') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Prima invia l\'IBAN al cliente (pre-conferma)' });
+      }
       await client.query(
         'UPDATE booking_requests SET status = $1, payment_status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
         ['confirmed', 'bonifico', id]
       );
       await client.query('COMMIT');
+      try { await sendConfirmationEmail(booking); } catch (e) { console.error('Errore email conferma:', e.message); }
       return res.json({ message: 'Pagamento verificato e prenotazione confermata' });
     }
 
@@ -705,6 +881,7 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
         ['confirmed', 'captured', captureId, id]
       );
       await client.query('COMMIT');
+      try { await sendConfirmationEmail(booking); } catch (e) { console.error('Errore email conferma:', e.message); }
       return res.json({ message: 'Acconto addebitato e prenotazione confermata' });
     }
 
@@ -715,6 +892,7 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
     );
     
     await client.query('COMMIT');
+    try { await sendConfirmationEmail(booking); } catch (e) { console.error('Errore email conferma:', e.message); }
     
     res.json({ message: 'Prenotazione confermata' });
   } catch (error) {
@@ -731,8 +909,8 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
     const { id } = req.params;
     
     const result = await pool.query(
-      'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND status = $3 RETURNING *',
-      ['rejected', id, 'pending']
+      'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND status IN ($3, $4) RETURNING *',
+      ['rejected', id, 'pending', 'preconfirmed']
     );
     
     if (result.rows.length === 0) {
@@ -749,7 +927,10 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
         console.error('Errore rilascio PayPal:', e.message);
       }
     }
-    
+
+    // Email di rifiuto con tutti i dati della prenotazione
+    try { await sendRejectionEmail(booking); } catch (e) { console.error('Errore email rifiuto:', e.message); }
+
     res.json({ message: 'Prenotazione rifiutata' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -796,7 +977,7 @@ async function autoRejectExpired() {
   try {
     const expired = await pool.query(
       `SELECT * FROM booking_requests
-       WHERE status = 'pending'
+       WHERE status IN ('pending', 'preconfirmed')
          AND created_at < NOW() - ($1 || ' hours')::interval`,
       [PAYPAL_CONFIRM_HOURS]
     );
@@ -821,6 +1002,7 @@ async function autoRejectExpired() {
           ['rejected', booking.id]
         );
       }
+      try { await sendRejectionEmail(booking); } catch (e) { console.error('Errore email rifiuto:', e.message); }
     }
   } catch (e) {
     console.error('Errore auto-rifiuto scaduti:', e.message);

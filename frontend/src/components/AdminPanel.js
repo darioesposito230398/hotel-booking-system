@@ -259,21 +259,39 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
+  const handlePreConfirm = async (bookingId) => {
+    if (!window.confirm('Inviare al cliente la mail con IBAN e lasciare la prenotazione in attesa del bonifico?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${apiUrl}/booking-requests/${bookingId}/confirm`,
+        { step: 'preconfirm' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchBookings();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Errore nella pre-conferma');
+    }
+  };
+
   const handleConfirm = async (bookingId) => {
-    const isBonifico = bookings.find(b => b.id === bookingId)?.payment_method === 'bonifico';
+    const booking = bookings.find(b => b.id === bookingId);
+    const isBonifico = booking?.payment_method === 'bonifico';
+    const isPreconfirmed = booking?.status === 'preconfirmed';
     const msg = isBonifico
-      ? 'Hai verificato che il bonifico è arrivato e vuoi confermare la prenotazione?'
-      : 'Confermare questa prenotazione? (PayPal: l\'acconto è già stato pagato)';
+      ? (isPreconfirmed
+        ? 'Hai verificato che il bonifico è arrivato? Confermerai la prenotazione e invierai la mail di conferma.'
+        : 'Per il bonifico: prima invia l\'IBAN al cliente (pre-conferma).')
+      : 'Vuoi confermare? Verrà addebitata la prima notte e inviata la mail di conferma.';
     if (window.confirm(msg)) {
       try {
         const token = localStorage.getItem('token');
         await axios.post(`${apiUrl}/booking-requests/${bookingId}/confirm`,
-          {},
+          { step: isBonifico ? 'final' : undefined },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         fetchBookings();
       } catch (err) {
-        setError('Errore nella conferma della prenotazione');
+        setError(err.response?.data?.error || 'Errore nella conferma della prenotazione');
       }
     }
   };
@@ -313,7 +331,7 @@ const AdminPanel = ({ apiUrl }) => {
   const bookingInTab = (b) => {
     switch (activeTab) {
       case 'pending':
-        return b.status === 'pending';
+        return b.status === 'pending' || b.status === 'preconfirmed';
       case 'upcoming':
         return b.status === 'confirmed' && b.check_in >= today;
       case 'current':
@@ -331,7 +349,7 @@ const AdminPanel = ({ apiUrl }) => {
     return bookings.filter(b => {
       switch (tab) {
         case 'pending':
-          return b.status === 'pending';
+          return b.status === 'pending' || b.status === 'preconfirmed';
         case 'upcoming':
           return b.status === 'confirmed' && b.check_in >= today;
         case 'current':
@@ -356,6 +374,7 @@ const AdminPanel = ({ apiUrl }) => {
   const statusLabel = (status) => {
     switch (status) {
       case 'pending': return 'In attesa';
+      case 'preconfirmed': return 'In attesa bonifico';
       case 'confirmed': return 'Confermata';
       case 'rejected': return 'Rifiutata';
       case 'cancelled': return 'Cancellata';
@@ -690,14 +709,32 @@ const AdminPanel = ({ apiUrl }) => {
                   </div>
                 )}
 
-                {booking.status === 'pending' && (
+                {(booking.status === 'pending' || booking.status === 'preconfirmed') && (
                   <div className="booking-card-actions">
-                    <button
-                      onClick={() => handleConfirm(booking.id)}
-                      className="btn btn-success"
-                    >
-                      {booking.payment_method === 'bonifico' ? 'Conferma (bonifico verificato)' : 'Conferma'}
-                    </button>
+                    {booking.payment_method === 'bonifico' && booking.status === 'pending' && (
+                      <button
+                        onClick={() => handlePreConfirm(booking.id)}
+                        className="btn btn-success"
+                      >
+                        Invia IBAN (pre-conferma)
+                      </button>
+                    )}
+                    {booking.payment_method === 'bonifico' && booking.status === 'preconfirmed' && (
+                      <button
+                        onClick={() => handleConfirm(booking.id)}
+                        className="btn btn-success"
+                      >
+                        Conferma (bonifico verificato)
+                      </button>
+                    )}
+                    {booking.payment_method !== 'bonifico' && booking.status === 'pending' && (
+                      <button
+                        onClick={() => handleConfirm(booking.id)}
+                        className="btn btn-success"
+                      >
+                        Conferma
+                      </button>
+                    )}
                     <button
                       onClick={() => handleReject(booking.id)}
                       className="btn btn-danger"

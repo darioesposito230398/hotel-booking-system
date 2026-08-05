@@ -87,6 +87,10 @@ const translations = {
 
     'booking.eyebrow': 'Richiesta di prenotazione',
     'booking.quote': 'Calcola preventivo',
+    'booking.completeFields': 'Completa tutti i campi (date, camera, nome, email e documento) per procedere.',
+    'label.idDocument': 'Documento d\'identità (foto o PDF)',
+    'idDocument.uploaded': 'Caricato',
+    'idDocument.hint': 'Obbligatorio per legge, max 5 MB.',
     'booking.title': 'Prenota la tua camera',
     'booking.p':
       'Scegli le date e i dati della carta. Non ti addebitiamo nulla adesso: la reception conferma prima, il pagamento avviene solo dopo la conferma.',
@@ -132,6 +136,7 @@ const translations = {
     'success.email': 'Riceverai una comunicazione via email.',
 
     'login.title': 'Accesso Reception',
+    'login.emailPlaceholder': 'La tua email',
     'login.register.title': 'Registrazione Reception',
     'login.password': 'Password',
     'login.loading': 'Accesso in corso...',
@@ -227,6 +232,10 @@ const translations = {
 
     'booking.eyebrow': 'Booking request',
     'booking.quote': 'Get a quote',
+    'booking.completeFields': 'Complete all fields (dates, room, name, email and ID document) to proceed.',
+    'label.idDocument': 'ID document (photo or PDF)',
+    'idDocument.uploaded': 'Uploaded',
+    'idDocument.hint': 'Required by law, max 5 MB.',
     'booking.title': 'Book your room',
     'booking.p':
       'Choose the dates and card details. We won\u2019t charge you anything now: the reception confirms first and payment happens only after confirmation.',
@@ -272,6 +281,7 @@ const translations = {
     'success.email': 'You will receive an email confirmation.',
 
     'login.title': 'Reception login',
+    'login.emailPlaceholder': 'Your email',
     'login.register.title': 'Reception registration',
     'login.password': 'Password',
     'login.loading': 'Signing in...',
