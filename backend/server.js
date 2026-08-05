@@ -717,7 +717,7 @@ app.post('/api/booking-requests', async (req, res) => {
           check_in, check_out, room_type_id, num_guests,
           total_price, first_night_amount, id_document, notes,
           payment_method, payment_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `, [
         guestName, guestEmail, guestPhone,
