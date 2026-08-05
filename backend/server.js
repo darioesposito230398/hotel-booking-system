@@ -679,7 +679,29 @@ app.post('/api/booking-requests', async (req, res) => {
     } = req.body;
 
     if (!guestName || !guestEmail || !checkIn || !checkOut || !roomTypeId || !idDocument) {
-      return res.status(400).json({ error: 'Compila tutti i campi obbligatori, incluso il documento d\'identità.' });
+      const labels = {
+        guestName: 'nome e cognome',
+        guestEmail: 'email',
+        guestPhone: 'telefono',
+        checkIn: 'data di check-in',
+        checkOut: 'data di check-out',
+        roomTypeId: 'tipologia di camera',
+        numGuests: 'numero ospiti',
+        idDocument: 'documento d\'identità'
+      };
+      const missing = [];
+      if (!guestName) missing.push(labels.guestName);
+      if (!guestEmail) missing.push(labels.guestEmail);
+      if (!guestPhone) missing.push(labels.guestPhone);
+      if (!checkIn) missing.push(labels.checkIn);
+      if (!checkOut) missing.push(labels.checkOut);
+      if (!roomTypeId) missing.push(labels.roomTypeId);
+      if (!idDocument) missing.push(labels.idDocument);
+      return res.status(400).json({
+        error: missing.length === 0
+          ? 'Compila tutti i campi obbligatori.'
+          : `Compila i campi obbligatori: ${missing.join(', ')}.`
+      });
     }
 
     // Calculate total price (per-day, with overrides) and apply discount

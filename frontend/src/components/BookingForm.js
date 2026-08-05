@@ -46,7 +46,8 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
 
   const isFormComplete = () =>
     Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
-      formData.guestName && formData.guestEmail && idDocument);
+      formData.guestName && formData.guestEmail && formData.guestPhone &&
+      formData.numGuests && idDocument);
 
   useEffect(() => {
     const fetchBonificoInfo = async () => {
@@ -122,8 +123,31 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const validate = () => {
+    const missing = [];
+    if (!formData.guestName) missing.push('nome e cognome');
+    if (!formData.guestEmail) missing.push('email');
+    else if (!/\S+@\S+\.\S+/.test(formData.guestEmail)) return 'L\'email inserita non è valida.';
+    if (!formData.guestPhone) missing.push('telefono');
+    if (!formData.checkIn) missing.push('data di check-in');
+    if (!formData.checkOut) missing.push('data di check-out');
+    else if (formData.checkIn && formData.checkOut && new Date(formData.checkOut) <= new Date(formData.checkIn)) {
+      return 'La data di check-out deve essere successiva al check-in.';
+    }
+    if (!formData.roomTypeId) missing.push('tipologia di camera');
+    if (!formData.numGuests) missing.push('numero ospiti');
+    if (!idDocument) missing.push('documento d\'identità');
+    if (missing.length === 0) return '';
+    return `Compila i campi obbligatori: ${missing.join(', ')}.`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const invalid = validate();
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -142,6 +166,11 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   };
 
   const handlePayPalSuccess = async (data) => {
+    const invalid = validate();
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
