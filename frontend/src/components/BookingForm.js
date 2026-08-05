@@ -24,9 +24,11 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   const [nights, setNights] = useState(0);
   const [hasQuote, setHasQuote] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paypal');
-  const [bonificoInfo, setBonificoInfo] = useState({});
   const [idDocument, setIdDocument] = useState('');
   const [idDocumentName, setIdDocumentName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleIdDocument = (e) => {
     const file = e.target.files?.[0];
@@ -48,21 +50,6 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
       formData.guestName && formData.guestEmail && formData.guestPhone &&
       formData.numGuests && idDocument);
-
-  useEffect(() => {
-    const fetchBonificoInfo = async () => {
-      try {
-        const response = await axios.get(`${apiUrl}/bonifico-info`);
-        setBonificoInfo(response.data || {});
-      } catch (err) {
-        console.error('Error fetching bonifico info:', err);
-      }
-    };
-    fetchBonificoInfo();
-  }, [apiUrl]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
@@ -203,12 +190,6 @@ if (success) {
         {paymentMethod === 'bonifico' ? (
           <>
             <p>{t('success.bonifico.done')}</p>
-            {bonificoInfo.bonifico_intestatario && (
-              <p><strong>{t('bonifico.intestatario')}:</strong> {bonificoInfo.bonifico_intestatario}</p>
-            )}
-            {bonificoInfo.bonifico_iban && (
-              <p><strong>IBAN:</strong> {bonificoInfo.bonifico_iban}</p>
-            )}
             <p>{t('success.bonifico.confirm')}</p>
           </>
         ) : paymentMethod === 'paypal' ? (
@@ -434,14 +415,7 @@ if (success) {
         {paymentMethod === 'bonifico' && (
           <div className="bonifico-block">
             <p className="bonifico-title">{t('bonifico.title')}</p>
-            {bonificoInfo.bonifico_intestatario && (
-              <p><strong>{t('bonifico.intestatario')}:</strong> {bonificoInfo.bonifico_intestatario}</p>
-            )}
-            {bonificoInfo.bonifico_iban ? (
-              <p><strong>IBAN:</strong> <span className="bonifico-iban">{bonificoInfo.bonifico_iban}</span></p>
-            ) : (
-              <p className="bonifico-avviso">{t('bonifico.iban.pending')}</p>
-            )}
+            <p className="bonifico-avviso">{t('bonifico.iban.pending')}</p>
             <p className="bonifico-note">{t('bonifico.note')}</p>
           </div>
         )}
