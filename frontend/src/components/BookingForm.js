@@ -160,7 +160,11 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
       setSuccess(true);
       setLoading(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione');
+      if (err.response?.status === 413) {
+        setError('Il documento d\'identità è troppo grande. Carica un file più piccolo (max 5 MB).');
+      } else {
+        setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione. Riprova.');
+      }
       setLoading(false);
     }
   };
@@ -183,7 +187,11 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
       setSuccess(true);
       setLoading(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione');
+      if (err.response?.status === 413) {
+        setError('Il documento d\'identità è troppo grande. Carica un file più piccolo (max 5 MB).');
+      } else {
+        setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione. Riprova.');
+      }
       setLoading(false);
     }
   };
