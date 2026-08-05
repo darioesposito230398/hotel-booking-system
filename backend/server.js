@@ -13,6 +13,82 @@ const { body, validationResult } = require('express-validator');
 // Sconto promozionale applicato al cliente (10% sul prezzo pieno)
 const BOOKING_DISCOUNT = 0.10;
 
+// PayPal (acconto prima notte, pagato subito dal cliente)
+const PAYPAL_BASE = process.env.PAYPAL_MODE === 'live'
+  ? 'https://api-m.paypal.com'
+  : 'https://api-m.sandbox.paypal.com';
+
+let paypalTokenCache = null;
+let paypalTokenExpiry = 0;
+
+async function paypalGetToken() {
+  if (paypalTokenCache && Date.now() < paypalTokenExpiry) return paypalTokenCache;
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const secret = process.env.PAYPAL_SECRET;
+  if (!clientId || !secret) {
+    throw new Error('PayPal non configurato (mancano PAYPAL_CLIENT_ID / PAYPAL_SECRET)');
+  }
+  const auth = Buffer.from(`${clientId}:${secret}`).toString('base64');
+  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal auth: ${res.status} ${text}`);
+  }
+  const data = await res.json();
+  paypalTokenCache = data.access_token;
+  paypalTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+  return paypalTokenCache;
+}
+
+async function paypalCreateOrder(amount) {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        amount: {
+          currency_code: 'EUR',
+          value: amount.toFixed(2)
+        }
+      }]
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal create order: ${res.status} ${text}`);
+  }
+  return (await res.json()).id;
+}
+
+async function paypalCaptureOrder(orderId) {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders/${orderId}/capture`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal capture: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -115,6 +191,7 @@ async function initDatabase() {
     await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS first_night_amount DECIMAL(10,2)');
     await client.query("ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'card'");
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_order_id VARCHAR(128)');
 
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
@@ -382,58 +459,37 @@ app.delete('/api/room-types/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Stripe payment method tokenization
-// La carta viene addebitata SOLO per la prima notte; il resto si paga in struttura.
-app.post('/api/create-payment-intent', async (req, res) => {
+// Create a PayPal order for the first-night deposit (amount computed server-side)
+app.post('/api/paypal/create-order', async (req, res) => {
   try {
-    const { roomTypeId, checkIn, checkOut, numGuests } = req.body;
-
-    // Calculate total price (per-day, with overrides) and apply discount
-    const { total, discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
-
-    // Importo addebitato = solo la prima notte, scontata
+    const { roomTypeId, checkIn, checkOut } = req.body;
+    const { days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
     const firstNightFull = days.length > 0 ? days[0].price : 0;
     const firstNightAmount = Math.round(firstNightFull * (1 - discount) * 100) / 100;
 
-    // Create a PaymentIntent with the first-night amount but don't charge yet
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(firstNightAmount * 100), // Stripe uses cents
-      currency: 'eur',
-      automatic_payment_methods: { enabled: true },
-    });
-
-    res.json({
-      clientSecret: paymentIntent.client_secret,
-      firstNightAmount,
-      totalPrice: firstNightAmount,
-      originalTotal: total,
-      discountedTotal,
-      discount,
-    });
+    const orderId = await paypalCreateOrder(firstNightAmount);
+    res.json({ orderId, firstNightAmount });
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Create booking request
+// Create booking request (PayPal or bonifico)
 app.post('/api/booking-requests', async (req, res) => {
   try {
     const {
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
-      notes, paymentIntentId, paymentMethod
+      notes, paymentMethod, paypalOrderId
     } = req.body;
 
     // Calculate total price (per-day, with overrides) and apply discount
     const { discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
-    const nights = days.length;
     const firstNightFull = days.length > 0 ? days[0].price : 0;
     const firstNightAmount = Math.round(firstNightFull * (1 - discount) * 100) / 100;
 
-    const method = paymentMethod === 'bonifico' ? 'bonifico' : 'card';
-
-    // For bank transfer: no Stripe involved, admin verifies the transfer manually
-    if (method === 'bonifico') {
+    // Bonifico istantaneo: nessun pagamento online, l'amministratore verifica manualmente
+    if (paymentMethod === 'bonifico') {
       const result = await pool.query(`
         INSERT INTO booking_requests (
           guest_name, guest_email, guest_phone,
@@ -451,33 +507,25 @@ app.post('/api/booking-requests', async (req, res) => {
       return res.status(201).json(result.rows[0]);
     }
 
-    // Retrieve payment method from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    // PayPal: cattura l'acconto (prima notte) che il cliente ha già approvato
+    if (!paypalOrderId) {
+      return res.status(400).json({ error: 'paypalOrderId mancante' });
+    }
+    await paypalCaptureOrder(paypalOrderId);
 
-    // Create Stripe customer and attach payment method
-    const customer = await stripe.customers.create({
-      email: guestEmail,
-      name: guestName,
-      payment_method: paymentIntent.payment_method,
-      invoice_settings: { default_payment_method: paymentIntent.payment_method }
-    });
-
-    // Save booking request
     const result = await pool.query(`
       INSERT INTO booking_requests (
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
         total_price, first_night_amount, notes,
-        stripe_payment_method_id, stripe_customer_id,
-        payment_method, payment_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        payment_method, payment_status, paypal_order_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
       discountedTotal, firstNightAmount, notes,
-      paymentIntent.payment_method, customer.id,
-      'card', 'card'
+      'paypal', 'captured', paypalOrderId
     ]);
 
     res.status(201).json(result.rows[0]);
@@ -557,13 +605,14 @@ app.put('/api/payment-config', authenticateToken, async (req, res) => {
 });
 
 // Confirm booking request
+// PayPal: l'acconto è già stato catturato al momento della prenotazione.
+// Bonifico: l'amministratore verifica l'arrivo del pagamento e conferma.
 app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
     const { id } = req.params;
-    const { payment_action } = req.body;
     
     // Get booking request
     const bookingResult = await client.query(
@@ -583,8 +632,8 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
       return res.status(400).json({ error: 'Booking already processed' });
     }
 
-    // Bonifico: nessun addebito Stripe, l'amministratore verifica il bonifico manualmente
     if (booking.payment_method === 'bonifico') {
+      // Pagamento verificato manualmente dall'amministratore
       await client.query(
         'UPDATE booking_requests SET status = $1, payment_status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
         ['confirmed', 'bonifico', id]
@@ -593,54 +642,15 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
       return res.json({ message: 'Pagamento verificato e prenotazione confermata' });
     }
 
-    // Importo addebitato = solo la prima notte (il resto si paga in struttura)
-    const chargeAmount = booking.first_night_amount
-      ? parseFloat(booking.first_night_amount)
-      : parseFloat(booking.total_price);
-
-    // Process payment based on config
-    if (payment_action === 'charge_on_confirm') {
-      // Charge the customer (solo prima notte)
-      await stripe.paymentIntents.create({
-        amount: Math.round(chargeAmount * 100),
-        currency: 'eur',
-        customer: booking.stripe_customer_id,
-        payment_method: booking.stripe_payment_method_id,
-        off_session: true,
-        confirm: true
-      });
-      
-      await client.query(
-        'UPDATE booking_requests SET status = $1, payment_status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        ['confirmed', 'charged', id]
-      );
-    } else if (payment_action === 'authorize_only') {
-      // Just authorize (pre-auth) - prima notte
-      await stripe.paymentIntents.create({
-        amount: Math.round(chargeAmount * 100),
-        currency: 'eur',
-        customer: booking.stripe_customer_id,
-        payment_method: booking.stripe_payment_method_id,
-        capture_method: 'manual',
-        off_session: true,
-        confirm: true
-      });
-      
-      await client.query(
-        'UPDATE booking_requests SET status = $1, payment_status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        ['confirmed', 'authorized', id]
-      );
-    } else {
-      // No payment action, just confirm
-      await client.query(
-        'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        ['confirmed', id]
-      );
-    }
+    // PayPal (acconto già catturato) o qualsiasi altro metodo: basta confermare
+    await client.query(
+      'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      ['confirmed', id]
+    );
     
     await client.query('COMMIT');
     
-    res.json({ message: 'Booking confirmed successfully' });
+    res.json({ message: 'Prenotazione confermata' });
   } catch (error) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import axios from 'axios';
 import { useLanguage } from '../i18n';
 
 const BookingForm = ({ apiUrl }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+  const [{ isPending }] = usePayPalScriptReducer();
   const { t, roomName, roomDesc } = useLanguage();
   
   const [roomTypes, setRoomTypes] = useState([]);
@@ -25,7 +24,7 @@ const BookingForm = ({ apiUrl }) => {
   const [discount, setDiscount] = useState(0.1);
   const [nights, setNights] = useState(0);
   const [hasQuote, setHasQuote] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('paypal');
   const [bonificoInfo, setBonificoInfo] = useState({});
 
   useEffect(() => {
@@ -108,52 +107,27 @@ const BookingForm = ({ apiUrl }) => {
     setError('');
 
     try {
-      // Bonifico istantaneo: nessuna carta, invio solo la richiesta di prenotazione
-      if (paymentMethod === 'bonifico') {
-        await axios.post(`${apiUrl}/booking-requests`, {
-          ...formData,
-          paymentMethod: 'bonifico'
-        });
-        setSuccess(true);
-        setLoading(false);
-        return;
-      }
-
-      // Create payment intent
-      const paymentResponse = await axios.post(`${apiUrl}/create-payment-intent`, {
-        roomTypeId: formData.roomTypeId,
-        checkIn: formData.checkIn,
-        checkOut: formData.checkOut,
-        numGuests: formData.numGuests
-      });
-
-      const { clientSecret } = paymentResponse.data;
-
-      // Confirm payment with Stripe (this tokenizes the card)
-      const cardElement = elements.getElement(CardElement);
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: formData.guestName,
-            email: formData.guestEmail,
-          },
-        },
-      });
-
-      if (stripeError) {
-        setError(stripeError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Create booking request
       await axios.post(`${apiUrl}/booking-requests`, {
         ...formData,
-        paymentIntentId: paymentIntent.id,
-        paymentMethod: 'card'
+        paymentMethod: 'bonifico'
       });
+      setSuccess(true);
+      setLoading(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione');
+      setLoading(false);
+    }
+  };
 
+  const handlePayPalSuccess = async (data) => {
+    setLoading(true);
+    setError('');
+    try {
+      await axios.post(`${apiUrl}/booking-requests`, {
+        ...formData,
+        paymentMethod: 'paypal',
+        paypalOrderId: data.orderID
+      });
       setSuccess(true);
       setLoading(false);
     } catch (err) {
@@ -177,6 +151,8 @@ if (success) {
             )}
             <p>{t('success.bonifico.confirm')}</p>
           </>
+        ) : paymentMethod === 'paypal' ? (
+          <p>{t('success.paypal')}</p>
         ) : (
           <p>{t('success.nocharge')}</p>
         )}
@@ -354,13 +330,13 @@ if (success) {
             <input
               type="radio"
               name="paymentMethod"
-              value="card"
-              checked={paymentMethod === 'card'}
-              onChange={() => setPaymentMethod('card')}
+              value="paypal"
+              checked={paymentMethod === 'paypal'}
+              onChange={() => setPaymentMethod('paypal')}
             />
             <div>
-              <strong>{t('payment.card')}</strong>
-              <small>{t('payment.card.desc')}</small>
+              <strong>{t('payment.paypal')}</strong>
+              <small>{t('payment.paypal.desc')}</small>
             </div>
           </label>
           <label className="payment-option">
@@ -378,33 +354,6 @@ if (success) {
           </label>
         </div>
 
-        {paymentMethod === 'card' && (
-          <div className="form-group">
-            <label>{t('label.card')}</label>
-            <div className="stripe-element">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#1b2430',
-                      '::placeholder': {
-                        color: '#aab7c4',
-                      },
-                    },
-                    invalid: {
-                      color: '#b03c2e',
-                    },
-                  },
-                }}
-              />
-            </div>
-            <small className="stripe-note">
-              {t('stripe.note')}
-            </small>
-          </div>
-        )}
-
         {paymentMethod === 'bonifico' && (
           <div className="bonifico-block">
             <p className="bonifico-title">{t('bonifico.title')}</p>
@@ -420,14 +369,45 @@ if (success) {
           </div>
         )}
 
-        <button
-          type="submit"
-          className="btn btn-primary btn-block"
-          disabled={loading}
-          style={{ marginTop: '1.25rem' }}
-        >
-          {loading ? t('booking.loading') : t('booking.submit')}
-        </button>
+        {paymentMethod === 'bonifico' && (
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={loading}
+            style={{ marginTop: '1.25rem' }}
+          >
+            {loading ? t('booking.loading') : t('booking.submit')}
+          </button>
+        )}
+
+        {paymentMethod === 'paypal' && (
+          <div className="paypal-block" style={{ marginTop: '1.25rem' }}>
+            {isPending ? (
+              <p className="paypal-loading">{t('paypal.loading')}</p>
+            ) : (
+              <PayPalButtons
+                style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}
+                forceReRender={[formData.checkIn, formData.checkOut, formData.roomTypeId]}
+                createOrder={async () => {
+                  if (!hasQuote || totalPrice <= 0) {
+                    setError(t('booking.quote.first'));
+                    throw new Error('quote required');
+                  }
+                  const res = await axios.post(`${apiUrl}/paypal/create-order`, {
+                    roomTypeId: formData.roomTypeId,
+                    checkIn: formData.checkIn,
+                    checkOut: formData.checkOut
+                  });
+                  return res.data.orderId;
+                }}
+                onApprove={async (data) => {
+                  await handlePayPalSuccess(data);
+                }}
+                onError={() => setError(t('paypal.error'))}
+              />
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

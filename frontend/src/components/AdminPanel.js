@@ -5,7 +5,6 @@ const AdminPanel = ({ apiUrl }) => {
   const [bookings, setBookings] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [paymentConfig, setPaymentConfig] = useState('charge_on_confirm');
   const [bonificoIban, setBonificoIban] = useState('');
   const [bonificoIntestatario, setBonificoIntestatario] = useState('Hotel Vittorio Veneto');
   const [error, setError] = useState('');
@@ -54,7 +53,6 @@ const AdminPanel = ({ apiUrl }) => {
       const response = await axios.get(`${apiUrl}/payment-config`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
       setBonificoIban(response.data.bonifico_iban || '');
       setBonificoIntestatario(response.data.bonifico_intestatario || 'Hotel Vittorio Veneto');
     } catch (err) {
@@ -189,19 +187,6 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
-  const updatePaymentConfig = async (newConfig) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(`${apiUrl}/payment-config`,
-        { payment_action: newConfig },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setPaymentConfig(newConfig);
-    } catch (err) {
-      setError('Errore nell\'aggiornamento della configurazione');
-    }
-  };
-
   const saveBonifico = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -275,11 +260,15 @@ const AdminPanel = ({ apiUrl }) => {
   };
 
   const handleConfirm = async (bookingId) => {
-    if (window.confirm('Confermare questa prenotazione? Verrà effettuato il pagamento secondo la configurazione attuale.')) {
+    const isBonifico = bookings.find(b => b.id === bookingId)?.payment_method === 'bonifico';
+    const msg = isBonifico
+      ? 'Hai verificato che il bonifico è arrivato e vuoi confermare la prenotazione?'
+      : 'Confermare questa prenotazione? (PayPal: l\'acconto è già stato pagato)';
+    if (window.confirm(msg)) {
       try {
         const token = localStorage.getItem('token');
         await axios.post(`${apiUrl}/booking-requests/${bookingId}/confirm`,
-          { payment_action: paymentConfig },
+          {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
         fetchBookings();
@@ -415,44 +404,6 @@ const AdminPanel = ({ apiUrl }) => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
-
-      <div className="payment-config">
-        <h3>Configurazione Pagamento</h3>
-        <p>Seleziona cosa fare quando confermi una prenotazione:</p>
-        <div className="config-option">
-          <input
-            type="radio"
-            id="charge"
-            name="paymentAction"
-            value="charge_on_confirm"
-            checked={paymentConfig === 'charge_on_confirm'}
-            onChange={(e) => updatePaymentConfig(e.target.value)}
-          />
-          <label htmlFor="charge">Addebita subito l'importo</label>
-        </div>
-        <div className="config-option">
-          <input
-            type="radio"
-            id="authorize"
-            name="paymentAction"
-            value="authorize_only"
-            checked={paymentConfig === 'authorize_only'}
-            onChange={(e) => updatePaymentConfig(e.target.value)}
-          />
-          <label htmlFor="authorize">Solo pre-autorizzazione (addebito al check-in)</label>
-        </div>
-        <div className="config-option">
-          <input
-            type="radio"
-            id="none"
-            name="paymentAction"
-            value="no_payment"
-            checked={paymentConfig === 'no_payment'}
-            onChange={(e) => updatePaymentConfig(e.target.value)}
-          />
-          <label htmlFor="none">Nessuna azione di pagamento</label>
-        </div>
-      </div>
 
       <div className="bonifico-config">
         <h3>Bonifico istantaneo (per clienti che pagano con bonifico)</h3>
@@ -715,7 +666,7 @@ const AdminPanel = ({ apiUrl }) => {
                   <div className="detail-item">
                     <span className="detail-label">Metodo Pagamento</span>
                     <span className="detail-value">
-                      {booking.payment_method === 'bonifico' ? 'Bonifico istantaneo' : 'Carta'}
+                      {booking.payment_method === 'bonifico' ? 'Bonifico istantaneo' : 'PayPal'}
                     </span>
                   </div>
                   <div className="detail-item">
@@ -723,9 +674,8 @@ const AdminPanel = ({ apiUrl }) => {
                     <span className="detail-value">
                       {booking.payment_method === 'bonifico'
                         ? (booking.status === 'confirmed' ? 'Pagato — bonifico verificato' : 'Da verificare (pagamento manuale)') :
-                       booking.payment_status === 'tokenized' ? 'Dati carta salvati (tokenizzati)' :
-                       booking.payment_status === 'charged' ? 'Addebitato' :
-                       booking.payment_status === 'authorized' ? 'Pre-autorizzato' : booking.payment_status}
+                       booking.payment_status === 'captured' ? 'Pagato — acconto addebitato con PayPal' :
+                       booking.payment_status}
                     </span>
                   </div>
                 </div>
@@ -743,7 +693,7 @@ const AdminPanel = ({ apiUrl }) => {
                       onClick={() => handleConfirm(booking.id)}
                       className="btn btn-success"
                     >
-                      {booking.payment_method === 'bonifico' ? 'Conferma (bonifico verificato)' : 'Accetta'}
+                      {booking.payment_method === 'bonifico' ? 'Conferma (bonifico verificato)' : 'Conferma'}
                     </button>
                     <button
                       onClick={() => handleReject(booking.id)}
