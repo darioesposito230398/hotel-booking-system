@@ -6,6 +6,8 @@ const AdminPanel = ({ apiUrl }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paymentConfig, setPaymentConfig] = useState('charge_on_confirm');
+  const [bonificoIban, setBonificoIban] = useState('');
+  const [bonificoIntestatario, setBonificoIntestatario] = useState('Hotel Vittorio Veneto');
   const [error, setError] = useState('');
   const [roomsDirty, setRoomsDirty] = useState({});
   const [showNewRoom, setShowNewRoom] = useState(false);
@@ -13,7 +15,10 @@ const AdminPanel = ({ apiUrl }) => {
   const [activeTab, setActiveTab] = useState('pending');
   const [search, setSearch] = useState('');
   const [priceRoomId, setPriceRoomId] = useState('');
-  const [priceMonth, setPriceMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [priceMonth, setPriceMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [priceGrid, setPriceGrid] = useState({});
   const [bulkFrom, setBulkFrom] = useState('');
   const [bulkTo, setBulkTo] = useState('');
@@ -50,6 +55,8 @@ const AdminPanel = ({ apiUrl }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPaymentConfig(response.data.payment_action || 'charge_on_confirm');
+      setBonificoIban(response.data.bonifico_iban || '');
+      setBonificoIntestatario(response.data.bonifico_intestatario || 'Hotel Vittorio Veneto');
     } catch (err) {
       console.error('Error fetching payment config:', err);
     }
@@ -110,13 +117,16 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
+  const fmtKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   const applyRange = async (clear) => {
     if (!bulkFrom || !bulkTo) return;
     const payload = {};
-    const d = new Date(bulkFrom);
-    const end = new Date(bulkTo);
+    const d = new Date(bulkFrom + 'T12:00:00');
+    const end = new Date(bulkTo + 'T12:00:00');
     while (d <= end) {
-      payload[d.toISOString().slice(0, 10)] = clear ? null : (parseFloat(bulkPrice) || null);
+      payload[fmtKey(d)] = clear ? null : (parseFloat(bulkPrice) || null);
       d.setDate(d.getDate() + 1);
     }
     try {
@@ -146,6 +156,39 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
+  const saveAll = async () => {
+    const room = rooms.find(r => r.id === parseInt(priceRoomId, 10));
+    const base = room ? parseFloat(room.base_price) : 0;
+    const payload = {};
+    Object.entries(priceGrid).forEach(([date, val]) => {
+      const n = (val === '' || val === null || val === undefined) ? null : parseFloat(val);
+      payload[date] = (n !== null && n !== base) ? n : null;
+    });
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${apiUrl}/room-types/${priceRoomId}/prices`, { prices: payload },
+        { headers: { Authorization: `Bearer ${token}` } });
+      // ricarica il mese così la pagina mostra i prezzi aggiornati
+      const [year, month] = priceMonth.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const res = await axios.get(`${apiUrl}/room-types/${priceRoomId}/prices`,
+        { params: { from: `${priceMonth}-01`, to: `${priceMonth}-${String(lastDay).padStart(2, '0')}` },
+          headers: { Authorization: `Bearer ${token}` } });
+      const overrides = {};
+      res.data.forEach(r => { overrides[r.date.slice(0, 10)] = parseFloat(r.price); });
+      const grid = {};
+      for (let d = 1; d <= lastDay; d++) {
+        const key = `${priceMonth}-${String(d).padStart(2, '0')}`;
+        grid[key] = overrides[key] !== undefined ? overrides[key] : base;
+      }
+      setPriceGrid(grid);
+      setError('');
+      alert('Prezzi salvati e aggiornati');
+    } catch (err) {
+      setError('Errore nel salvataggio delle tariffe');
+    }
+  };
+
   const updatePaymentConfig = async (newConfig) => {
     try {
       const token = localStorage.getItem('token');
@@ -156,6 +199,20 @@ const AdminPanel = ({ apiUrl }) => {
       setPaymentConfig(newConfig);
     } catch (err) {
       setError('Errore nell\'aggiornamento della configurazione');
+    }
+  };
+
+  const saveBonifico = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${apiUrl}/payment-config`,
+        { bonifico_iban: bonificoIban, bonifico_intestatario: bonificoIntestatario },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setError('');
+      alert('Dati bonifico salvati');
+    } catch (err) {
+      setError('Errore nel salvataggio dei dati bonifico');
     }
   };
 
@@ -397,6 +454,28 @@ const AdminPanel = ({ apiUrl }) => {
         </div>
       </div>
 
+      <div className="bonifico-config">
+        <h3>Bonifico istantaneo (per clienti che pagano con bonifico)</h3>
+        <div className="form-group">
+          <label>Intestatario</label>
+          <input
+            type="text"
+            value={bonificoIntestatario}
+            onChange={(e) => setBonificoIntestatario(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label>IBAN</label>
+          <input
+            type="text"
+            value={bonificoIban}
+            onChange={(e) => setBonificoIban(e.target.value)}
+            placeholder="IT00 X000 0000 0000 0000 0000 000"
+          />
+        </div>
+        <button onClick={saveBonifico} className="btn btn-primary">Salva dati bonifico</button>
+      </div>
+
       <div className="rooms-manager">
         <div className="rooms-manager-header">
           <h3>Gestione Camere</h3>
@@ -519,6 +598,10 @@ const AdminPanel = ({ apiUrl }) => {
           <button onClick={() => applyRange(true)} className="btn btn-secondary">Ripristina prezzo base</button>
         </div>
 
+        <button onClick={saveAll} className="btn btn-primary pricing-save">
+          Salva e aggiorna prezzi
+        </button>
+
         <div className="pricing-calendar">
           {Object.keys(priceGrid).map(date => (
             <div
@@ -630,9 +713,17 @@ const AdminPanel = ({ apiUrl }) => {
                     <span className="detail-value">{booking.guest_phone || 'Non fornito'}</span>
                   </div>
                   <div className="detail-item">
+                    <span className="detail-label">Metodo Pagamento</span>
+                    <span className="detail-value">
+                      {booking.payment_method === 'bonifico' ? 'Bonifico istantaneo' : 'Carta'}
+                    </span>
+                  </div>
+                  <div className="detail-item">
                     <span className="detail-label">Stato Pagamento</span>
                     <span className="detail-value">
-                      {booking.payment_status === 'tokenized' ? 'Dati carta salvati (tokenizzati)' :
+                      {booking.payment_method === 'bonifico'
+                        ? (booking.status === 'confirmed' ? 'Pagato — bonifico verificato' : 'Da verificare (pagamento manuale)') :
+                       booking.payment_status === 'tokenized' ? 'Dati carta salvati (tokenizzati)' :
                        booking.payment_status === 'charged' ? 'Addebitato' :
                        booking.payment_status === 'authorized' ? 'Pre-autorizzato' : booking.payment_status}
                     </span>
@@ -652,7 +743,7 @@ const AdminPanel = ({ apiUrl }) => {
                       onClick={() => handleConfirm(booking.id)}
                       className="btn btn-success"
                     >
-                      Accetta
+                      {booking.payment_method === 'bonifico' ? 'Conferma (bonifico verificato)' : 'Accetta'}
                     </button>
                     <button
                       onClick={() => handleReject(booking.id)}

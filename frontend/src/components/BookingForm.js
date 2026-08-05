@@ -25,6 +25,20 @@ const BookingForm = ({ apiUrl }) => {
   const [discount, setDiscount] = useState(0.1);
   const [nights, setNights] = useState(0);
   const [hasQuote, setHasQuote] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [bonificoInfo, setBonificoInfo] = useState({});
+
+  useEffect(() => {
+    const fetchBonificoInfo = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/bonifico-info`);
+        setBonificoInfo(response.data || {});
+      } catch (err) {
+        console.error('Error fetching bonifico info:', err);
+      }
+    };
+    fetchBonificoInfo();
+  }, [apiUrl]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -94,6 +108,17 @@ const BookingForm = ({ apiUrl }) => {
     setError('');
 
     try {
+      // Bonifico istantaneo: nessuna carta, invio solo la richiesta di prenotazione
+      if (paymentMethod === 'bonifico') {
+        await axios.post(`${apiUrl}/booking-requests`, {
+          ...formData,
+          paymentMethod: 'bonifico'
+        });
+        setSuccess(true);
+        setLoading(false);
+        return;
+      }
+
       // Create payment intent
       const paymentResponse = await axios.post(`${apiUrl}/create-payment-intent`, {
         roomTypeId: formData.roomTypeId,
@@ -125,7 +150,8 @@ const BookingForm = ({ apiUrl }) => {
       // Create booking request
       await axios.post(`${apiUrl}/booking-requests`, {
         ...formData,
-        paymentIntentId: paymentIntent.id
+        paymentIntentId: paymentIntent.id,
+        paymentMethod: 'card'
       });
 
       setSuccess(true);
@@ -140,7 +166,20 @@ if (success) {
     return (
       <div className="success-message">
         <h3>{t('success.title')}</h3>
-        <p>{t('success.nocharge')}</p>
+        {paymentMethod === 'bonifico' ? (
+          <>
+            <p>{t('success.bonifico.done')}</p>
+            {bonificoInfo.bonifico_intestatario && (
+              <p><strong>{t('bonifico.intestatario')}:</strong> {bonificoInfo.bonifico_intestatario}</p>
+            )}
+            {bonificoInfo.bonifico_iban && (
+              <p><strong>IBAN:</strong> {bonificoInfo.bonifico_iban}</p>
+            )}
+            <p>{t('success.bonifico.confirm')}</p>
+          </>
+        ) : (
+          <p>{t('success.nocharge')}</p>
+        )}
         <p>{t('success.validafter')}</p>
         <p>{t('success.email')}</p>
       </div>
@@ -310,35 +349,81 @@ if (success) {
           </div>
         )}
 
-        <div className="form-group">
-          <label>{t('label.card')}</label>
-          <div className="stripe-element">
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: '16px',
-                    color: '#1b2430',
-                    '::placeholder': {
-                      color: '#aab7c4',
+        <div className="payment-method">
+          <label className="payment-option">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="card"
+              checked={paymentMethod === 'card'}
+              onChange={() => setPaymentMethod('card')}
+            />
+            <div>
+              <strong>{t('payment.card')}</strong>
+              <small>{t('payment.card.desc')}</small>
+            </div>
+          </label>
+          <label className="payment-option">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="bonifico"
+              checked={paymentMethod === 'bonifico'}
+              onChange={() => setPaymentMethod('bonifico')}
+            />
+            <div>
+              <strong>{t('payment.bonifico')}</strong>
+              <small>{t('payment.bonifico.desc')}</small>
+            </div>
+          </label>
+        </div>
+
+        {paymentMethod === 'card' && (
+          <div className="form-group">
+            <label>{t('label.card')}</label>
+            <div className="stripe-element">
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#1b2430',
+                      '::placeholder': {
+                        color: '#aab7c4',
+                      },
+                    },
+                    invalid: {
+                      color: '#b03c2e',
                     },
                   },
-                  invalid: {
-                    color: '#b03c2e',
-                  },
-                },
-              }}
-            />
+                }}
+              />
+            </div>
+            <small className="stripe-note">
+              {t('stripe.note')}
+            </small>
           </div>
-          <small className="stripe-note">
-            {t('stripe.note')}
-          </small>
-        </div>
+        )}
+
+        {paymentMethod === 'bonifico' && (
+          <div className="bonifico-block">
+            <p className="bonifico-title">{t('bonifico.title')}</p>
+            {bonificoInfo.bonifico_intestatario && (
+              <p><strong>{t('bonifico.intestatario')}:</strong> {bonificoInfo.bonifico_intestatario}</p>
+            )}
+            {bonificoInfo.bonifico_iban ? (
+              <p><strong>IBAN:</strong> <span className="bonifico-iban">{bonificoInfo.bonifico_iban}</span></p>
+            ) : (
+              <p className="bonifico-avviso">{t('bonifico.iban.pending')}</p>
+            )}
+            <p className="bonifico-note">{t('bonifico.note')}</p>
+          </div>
+        )}
 
         <button
           type="submit"
           className="btn btn-primary btn-block"
-          disabled={!stripe || loading}
+          disabled={loading}
           style={{ marginTop: '1.25rem' }}
         >
           {loading ? t('booking.loading') : t('booking.submit')}

@@ -72,6 +72,7 @@ async function initDatabase() {
         num_guests INTEGER NOT NULL,
         total_price DECIMAL(10,2) NOT NULL,
         first_night_amount DECIMAL(10,2),
+        payment_method VARCHAR(20) DEFAULT 'card',
         notes TEXT,
         stripe_payment_method_id VARCHAR(255),
         stripe_customer_id VARCHAR(255),
@@ -95,6 +96,11 @@ async function initDatabase() {
       VALUES ('payment_action', 'charge_on_confirm')
       ON CONFLICT (config_key) DO NOTHING;
     `);
+    await client.query(`
+      INSERT INTO payment_config (config_key, config_value)
+      VALUES ('bonifico_iban', ''), ('bonifico_intestatario', 'Hotel Vittorio Veneto')
+      ON CONFLICT (config_key) DO NOTHING;
+    `);
 
     // Seed default admin account (email + password, hashed)
     const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'info@hotelvittorioveneto.com';
@@ -108,6 +114,7 @@ async function initDatabase() {
         // Ensure photo column exists on existing tables
     await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS first_night_amount DECIMAL(10,2)');
+    await client.query("ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'card'");
 
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
@@ -414,18 +421,39 @@ app.post('/api/booking-requests', async (req, res) => {
     const {
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
-      notes, paymentIntentId
+      notes, paymentIntentId, paymentMethod
     } = req.body;
-    
-    // Retrieve payment method from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
+
     // Calculate total price (per-day, with overrides) and apply discount
     const { discountedTotal, days, discount } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
     const nights = days.length;
     const firstNightFull = days.length > 0 ? days[0].price : 0;
     const firstNightAmount = Math.round(firstNightFull * (1 - discount) * 100) / 100;
-    
+
+    const method = paymentMethod === 'bonifico' ? 'bonifico' : 'card';
+
+    // For bank transfer: no Stripe involved, admin verifies the transfer manually
+    if (method === 'bonifico') {
+      const result = await pool.query(`
+        INSERT INTO booking_requests (
+          guest_name, guest_email, guest_phone,
+          check_in, check_out, room_type_id, num_guests,
+          total_price, first_night_amount, notes,
+          payment_method, payment_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `, [
+        guestName, guestEmail, guestPhone,
+        checkIn, checkOut, roomTypeId, numGuests,
+        discountedTotal, firstNightAmount, notes,
+        'bonifico', 'bonifico'
+      ]);
+      return res.status(201).json(result.rows[0]);
+    }
+
+    // Retrieve payment method from Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
     // Create Stripe customer and attach payment method
     const customer = await stripe.customers.create({
       email: guestEmail,
@@ -433,23 +461,25 @@ app.post('/api/booking-requests', async (req, res) => {
       payment_method: paymentIntent.payment_method,
       invoice_settings: { default_payment_method: paymentIntent.payment_method }
     });
-    
+
     // Save booking request
     const result = await pool.query(`
       INSERT INTO booking_requests (
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
         total_price, first_night_amount, notes,
-        stripe_payment_method_id, stripe_customer_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        stripe_payment_method_id, stripe_customer_id,
+        payment_method, payment_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
       discountedTotal, firstNightAmount, notes,
-      paymentIntent.payment_method, customer.id
+      paymentIntent.payment_method, customer.id,
+      'card', 'card'
     ]);
-    
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -485,17 +515,41 @@ app.get('/api/payment-config', authenticateToken, async (req, res) => {
   }
 });
 
+// Public bonifico info (shown to guests in the booking form)
+app.get('/api/bonifico-info', async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT config_key, config_value FROM payment_config WHERE config_key IN ('bonifico_iban', 'bonifico_intestatario')"
+    );
+    const info = {};
+    result.rows.forEach(row => {
+      info[row.config_key] = row.config_value;
+    });
+    res.json(info);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update payment config
 app.put('/api/payment-config', authenticateToken, async (req, res) => {
   try {
-    const { payment_action } = req.body;
-    
-    await pool.query(`
-      INSERT INTO payment_config (config_key, config_value)
-      VALUES ('payment_action', $1)
-      ON CONFLICT (config_key) DO UPDATE SET config_value = $1
-    `, [payment_action]);
-    
+    const { payment_action, bonifico_iban, bonifico_intestatario } = req.body;
+
+    const entries = [
+      ['payment_action', payment_action],
+      ['bonifico_iban', bonifico_iban],
+      ['bonifico_intestatario', bonifico_intestatario]
+    ].filter(([, value]) => value !== undefined);
+
+    for (const [key, value] of entries) {
+      await pool.query(`
+        INSERT INTO payment_config (config_key, config_value)
+        VALUES ($1, $2)
+        ON CONFLICT (config_key) DO UPDATE SET config_value = $2
+      `, [key, value]);
+    }
+
     res.json({ message: 'Payment config updated' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -528,7 +582,17 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Booking already processed' });
     }
-    
+
+    // Bonifico: nessun addebito Stripe, l'amministratore verifica il bonifico manualmente
+    if (booking.payment_method === 'bonifico') {
+      await client.query(
+        'UPDATE booking_requests SET status = $1, payment_status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        ['confirmed', 'bonifico', id]
+      );
+      await client.query('COMMIT');
+      return res.json({ message: 'Pagamento verificato e prenotazione confermata' });
+    }
+
     // Importo addebitato = solo la prima notte (il resto si paga in struttura)
     const chargeAmount = booking.first_night_amount
       ? parseFloat(booking.first_night_amount)
