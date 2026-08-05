@@ -702,6 +702,29 @@ const AdminPanel = ({ apiUrl }) => {
                   </div>
                 </div>
 
+                {booking.id_document && (
+                  <div className="detail-item" style={{ marginTop: '0.75rem' }}>
+                    <span className="detail-label">Documento d'identità</span>
+                    <a
+                      href={booking.id_document}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="doc-link"
+                    >
+                      Apri il documento
+                    </a>
+                    {booking.id_document.startsWith('data:image') && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <img
+                          src={booking.id_document}
+                          alt="Documento d'identità"
+                          style={{ width: '100%', maxWidth: '260px', borderRadius: '6px', border: '1px solid #eee' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {booking.notes && (
                   <div className="detail-item" style={{ marginBottom: '1rem' }}>
                     <span className="detail-label">Note del cliente</span>
