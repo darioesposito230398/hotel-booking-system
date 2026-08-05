@@ -63,6 +63,15 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.header .brand .brand-logo {
+  height: 2.3rem;
+  width: auto;
+  border-radius: 6px;
 }
 
 .header .brand .brand-city {

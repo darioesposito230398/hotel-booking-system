@@ -275,7 +275,7 @@ function App() {
     <Router>
       <div className="app">
         <header className="header">
-          <div className="brand">Hotel Vittorio Veneto <span className="brand-city">· Napoli</span></div>
+          <div className="brand"><img src="/images/logo.jpg" alt="Logo Hotel Vittorio Veneto" className="brand-logo" />Hotel Vittorio Veneto <span className="brand-city">· Napoli</span></div>
           <nav>
             <Link to="/">{t('nav.home')}</Link>
             <Link to="/prenota">{t('nav.book')}</Link>
