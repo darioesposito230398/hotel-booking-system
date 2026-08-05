@@ -111,6 +111,7 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   };
 
   const validate = () => {
+    if (!hasQuote || totalPrice <= 0) return t('booking.quote.first');
     const missing = [];
     if (!formData.guestName) missing.push('nome e cognome');
     if (!formData.guestEmail) missing.push('email');
@@ -424,7 +425,7 @@ if (success) {
           <button
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={loading}
+            disabled={loading || !hasQuote}
             style={{ marginTop: '1.25rem' }}
           >
             {loading ? t('booking.loading') : t('booking.submit')}
