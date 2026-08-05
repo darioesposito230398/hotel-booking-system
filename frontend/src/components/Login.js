@@ -8,7 +8,6 @@ const Login = ({ apiUrl, onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,16 +15,8 @@ const Login = ({ apiUrl, onLogin }) => {
     setError('');
 
     try {
-      const endpoint = isRegister ? '/auth/register' : '/auth/login';
-      const response = await axios.post(`${apiUrl}${endpoint}`, { email, password });
-      
-      if (isRegister) {
-        // After registration, automatically login
-        const loginResponse = await axios.post(`${apiUrl}/auth/login`, { email, password });
-        onLogin(loginResponse.data.token, loginResponse.data.user);
-      } else {
-        onLogin(response.data.token, response.data.user);
-      }
+      const response = await axios.post(`${apiUrl}/auth/login`, { email, password });
+      onLogin(response.data.token, response.data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Errore durante l\'accesso');
     } finally {
@@ -35,10 +26,10 @@ const Login = ({ apiUrl, onLogin }) => {
 
   return (
     <div className="login-form">
-      <h2>{isRegister ? t('login.register.title') : t('login.title')}</h2>
-      
+      <h2>{t('login.title')}</h2>
+
       {error && <div className="error-message">{error}</div>}
-      
+
       <form onSubmit={handleSubmit}>
         <div className="form-group" style={{ marginBottom: '1rem' }}>
           <label htmlFor="email">{t('label.email')}</label>
@@ -47,7 +38,7 @@ const Login = ({ apiUrl, onLogin }) => {
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="reception@hotel.com"
+            placeholder="info@hotelvittorioveneto.com"
             required
             style={{ width: '100%', marginTop: '0.5rem' }}
           />
@@ -66,22 +57,13 @@ const Login = ({ apiUrl, onLogin }) => {
           />
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="btn btn-primary"
           disabled={loading}
-          style={{ width: '100%', marginBottom: '1rem' }}
-        >
-          {loading ? t('login.loading') : (isRegister ? t('login.register.cta') : t('login.submit'))}
-        </button>
-
-        <button 
-          type="button"
-          onClick={() => setIsRegister(!isRegister)}
-          className="btn btn-secondary"
           style={{ width: '100%' }}
         >
-          {isRegister ? t('login.haveAccount') : t('login.noAccount')}
+          {loading ? t('login.loading') : t('login.submit')}
         </button>
       </form>
     </div>

@@ -84,6 +84,15 @@ async function initDatabase() {
       ON CONFLICT (config_key) DO NOTHING;
     `);
 
+    // Seed default admin account (email + password, hashed)
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'info@hotelvittorioveneto.com';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Hotel9698+';
+    const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+    await client.query(`
+      INSERT INTO users (email, password) VALUES ($1, $2)
+      ON CONFLICT (email) DO NOTHING;
+    `, [ADMIN_EMAIL, adminHash]);
+
         // Ensure photo column exists on existing tables
     await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
 
@@ -123,23 +132,9 @@ const authenticateToken = (req, res, next) => {
 // Routes
 
 // Auth routes
+// Registrazione disabilitata: l'accesso è riservato all'account admin
 app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const result = await pool.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
-      [email, hashedPassword]
-    );
-    
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    if (error.code === '23505') {
-      return res.status(400).json({ error: 'Email already exists' });
-    }
-    res.status(500).json({ error: error.message });
-  }
+  res.status(403).json({ error: 'Registrazione non disponibile. Utilizza le credenziali dell’hotel.' });
 });
 
 app.post('/api/auth/login', async (req, res) => {
