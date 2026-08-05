@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
+import { PayPalButtons } from '@paypal/react-paypal-js';
 import axios from 'axios';
 import { useLanguage } from '../i18n';
 
-const BookingForm = ({ apiUrl }) => {
-  const [{ isPending }] = usePayPalScriptReducer();
+const BookingForm = ({ apiUrl, paypalClientId }) => {
   const { t, roomName, roomDesc } = useLanguage();
   
   const [roomTypes, setRoomTypes] = useState([]);
@@ -382,8 +381,8 @@ if (success) {
 
         {paymentMethod === 'paypal' && (
           <div className="paypal-block" style={{ marginTop: '1.25rem' }}>
-            {isPending ? (
-              <p className="paypal-loading">{t('paypal.loading')}</p>
+            {!paypalClientId ? (
+              <p className="paypal-loading">{t('paypal.notConfigured')}</p>
             ) : (
               <PayPalButtons
                 style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}

@@ -312,13 +312,13 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/prenota" element={
-              PAYPAL_CLIENT_ID
-                ? (
-                  <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: 'EUR', intent: 'authorize' }}>
-                    <BookingForm apiUrl={API_URL} />
-                  </PayPalScriptProvider>
-                )
-                : <BookingForm apiUrl={API_URL} />
+              <PayPalScriptProvider options={{
+                clientId: PAYPAL_CLIENT_ID,
+                currency: 'EUR',
+                intent: 'authorize'
+              }} deferLoading={!PAYPAL_CLIENT_ID}>
+                <BookingForm apiUrl={API_URL} paypalClientId={PAYPAL_CLIENT_ID} />
+              </PayPalScriptProvider>
             } />
             <Route path="/login" element={
               isAuthenticated ? (
