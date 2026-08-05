@@ -12,6 +12,7 @@ const AdminPanel = ({ apiUrl }) => {
   const [showNewRoom, setShowNewRoom] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: '', description: '', max_guests: 1, photo: '' });
   const [activeTab, setActiveTab] = useState('pending');
+  const [docToView, setDocToView] = useState(null);
   const [search, setSearch] = useState('');
   const [priceRoomId, setPriceRoomId] = useState('');
   const [priceMonth, setPriceMonth] = useState(() => {
@@ -415,6 +416,25 @@ const AdminPanel = ({ apiUrl }) => {
 
   return (
     <div className="admin-panel">
+      {docToView && (
+        <div className="doc-modal-backdrop" onClick={() => setDocToView(null)}>
+          <div className="doc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="doc-modal-header">
+              <strong>Documento d'identità</strong>
+              <button type="button" onClick={() => setDocToView(null)} className="btn btn-subtle">Chiudi</button>
+            </div>
+            <div className="doc-modal-body">
+              {docToView.startsWith('data:image') ? (
+                <img src={docToView} alt="Documento d'identità" style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: '6px' }} />
+              ) : docToView.startsWith('data:application/pdf') ? (
+                <iframe src={docToView} title="Documento d'identità" style={{ width: '100%', height: '75vh', border: 'none' }} />
+              ) : (
+                <a href={docToView} download>Scarica il documento</a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="admin-header">
         <h2>Pannello Reception</h2>
         <button onClick={() => { fetchBookings(); fetchRooms(); }} className="btn btn-secondary">
@@ -705,20 +725,20 @@ const AdminPanel = ({ apiUrl }) => {
                 {booking.id_document && (
                   <div className="detail-item" style={{ marginTop: '0.75rem' }}>
                     <span className="detail-label">Documento d'identità</span>
-                    <a
-                      href={booking.id_document}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="doc-link"
+                    <button
+                      type="button"
+                      onClick={() => setDocToView(booking.id_document)}
+                      className="btn btn-subtle"
                     >
-                      Apri il documento
-                    </a>
+                      Visualizza documento
+                    </button>
                     {booking.id_document.startsWith('data:image') && (
                       <div style={{ marginTop: '0.5rem' }}>
                         <img
                           src={booking.id_document}
                           alt="Documento d'identità"
-                          style={{ width: '100%', maxWidth: '260px', borderRadius: '6px', border: '1px solid #eee' }}
+                          style={{ width: '100%', maxWidth: '260px', borderRadius: '6px', border: '1px solid #eee', cursor: 'pointer' }}
+                          onClick={() => setDocToView(booking.id_document)}
                         />
                       </div>
                     )}

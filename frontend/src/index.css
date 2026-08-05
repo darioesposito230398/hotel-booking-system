@@ -923,6 +923,34 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 1px solid var(--mist);
 }
 
+.doc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 26, 38, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+}
+.doc-modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  max-width: 720px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.doc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+.doc-modal-body {
+  text-align: center;
+}
+
 /* Payment config */
 .payment-config {
   background: var(--paper);
