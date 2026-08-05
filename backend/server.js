@@ -13,8 +13,8 @@ const { body, validationResult } = require('express-validator');
 // Sconto promozionale applicato al cliente (10% sul prezzo pieno)
 const BOOKING_DISCOUNT = 0.10;
 
-// PayPal — il cliente AUTORIZZA alla prenotazione, l'addebito avviene SOLO alla conferma.
-// Chi paga come ospite con sola carta (senza conto PayPal) viene addebitato subito da PayPal.
+// PayPal — il cliente AUTORIZZA alla prenotazione (serve un conto PayPal),
+// l'addebito avviene SOLO alla conferma. Nessun rimborso automatico.
 const PAYPAL_BASE = process.env.PAYPAL_MODE === 'live'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
@@ -128,42 +128,6 @@ async function paypalVoidAuth(authId) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Errore PayPal void: ${res.status} ${text}`);
-  }
-  return res.json();
-}
-
-// Fallback per ospiti senza conto PayPal (carta): PayPal addebita subito.
-// Restituisce l'id della capture per poter rimborsare in caso di rifiuto.
-async function paypalCaptureOrder(orderId) {
-  const token = await paypalGetToken();
-  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders/${orderId}/capture`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Errore PayPal capture: ${res.status} ${text}`);
-  }
-  const data = await res.json();
-  return data?.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
-}
-
-// Refund a captured amount (on cancellation of a paid booking).
-async function paypalRefundCapture(captureId) {
-  const token = await paypalGetToken();
-  const res = await fetch(`${PAYPAL_BASE}/v2/payments/captures/${captureId}/refund`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Errore PayPal refund: ${res.status} ${text}`);
   }
   return res.json();
 }
@@ -589,23 +553,19 @@ app.post('/api/booking-requests', async (req, res) => {
       return res.status(201).json(result.rows[0]);
     }
 
-    // PayPal: AUTORIZZA (trattiene, NON addebita) se possibile.
-    // Per ospiti senza conto PayPal (carta) PayPal non supporta la trattenuta:
-    // in tal caso addebitiamo subito e salviamo lo stato captured_now, con rimborso
-    // automatico se la prenotazione non viene confermata.
+    // PayPal: AUTORIZZA (trattiene, NON addebita). Richiede un conto PayPal.
+    // Addebito avviene solo alla conferma. Nessun rimborso automatico.
     if (!paypalOrderId) {
       return res.status(400).json({ error: 'paypalOrderId mancante' });
     }
 
-    let authId = null;
-    let captureId = null;
-    let paymentStatus = 'authorized';
+    let authId;
     try {
       authId = await paypalAuthorizeOrder(paypalOrderId);
     } catch (err) {
-      // Fallback: pagamento immediato (es. ospite carta senza conto PayPal)
-      captureId = await paypalCaptureOrder(paypalOrderId);
-      paymentStatus = 'captured_now';
+      return res.status(400).json({
+        error: 'Per pagare con PayPal serve un conto PayPal. In alternativa scegli il bonifico istantaneo.'
+      });
     }
 
     const result = await pool.query(`
@@ -613,14 +573,14 @@ app.post('/api/booking-requests', async (req, res) => {
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
         total_price, first_night_amount, notes,
-        payment_method, payment_status, paypal_order_id, paypal_auth_id, paypal_capture_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        payment_method, payment_status, paypal_order_id, paypal_auth_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
       discountedTotal, firstNightAmount, notes,
-      'paypal', paymentStatus, paypalOrderId, authId, captureId
+      'paypal', 'authorized', paypalOrderId, authId
     ]);
 
     res.status(201).json(result.rows[0]);
@@ -779,19 +739,14 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Booking request not found or already processed' });
     }
 
-    // PayPal: rilascia la trattenuta (authorized) o rimborsa l'addebito immediato (captured_now)
+    // PayPal: rilascia la trattenuta (nessun addebito avvenuto)
     const booking = result.rows[0];
-    if (booking.payment_method === 'paypal') {
+    if (booking.payment_method === 'paypal' && booking.paypal_auth_id) {
       try {
-        if (booking.payment_status === 'captured_now' && booking.paypal_capture_id) {
-          await paypalRefundCapture(booking.paypal_capture_id);
-          await pool.query('UPDATE booking_requests SET payment_status = $1 WHERE id = $2', ['refunded', id]);
-        } else if (booking.paypal_auth_id) {
-          await paypalVoidAuth(booking.paypal_auth_id);
-          await pool.query('UPDATE booking_requests SET payment_status = $1 WHERE id = $2', ['voided', id]);
-        }
+        await paypalVoidAuth(booking.paypal_auth_id);
+        await pool.query('UPDATE booking_requests SET payment_status = $1 WHERE id = $2', ['voided', id]);
       } catch (e) {
-        console.error('Errore rimborso/rilascio PayPal:', e.message);
+        console.error('Errore rilascio PayPal:', e.message);
       }
     }
     
@@ -819,13 +774,13 @@ app.post('/api/booking-requests/:id/cancel', authenticateToken, async (req, res)
     const booking = result.rows[0];
     if (booking.payment_method === 'paypal' && booking.paypal_capture_id) {
       try {
-        await paypalRefundCapture(booking.paypal_capture_id);
+        // Rimborso gestito manualmente dall'albergo (nessun rimborso automatico)
         await pool.query(
           'UPDATE booking_requests SET payment_status = $1 WHERE id = $2',
-          ['refunded', id]
+          ['refund_pending', id]
         );
       } catch (e) {
-        console.error('Errore rimborso PayPal:', e.message);
+        console.error('Errore aggiornamento stato PayPal:', e.message);
       }
     }
 
@@ -846,26 +801,13 @@ async function autoRejectExpired() {
       [PAYPAL_CONFIRM_HOURS]
     );
     for (const booking of expired.rows) {
-      if (booking.payment_method === 'paypal') {
+      if (booking.payment_method === 'paypal' && booking.paypal_auth_id) {
         try {
-          if (booking.payment_status === 'captured_now' && booking.paypal_capture_id) {
-            await paypalRefundCapture(booking.paypal_capture_id);
-            await pool.query(
-              'UPDATE booking_requests SET status = $1, payment_status = $2 WHERE id = $3',
-              ['rejected', 'refunded', booking.id]
-            );
-          } else if (booking.paypal_auth_id) {
-            await paypalVoidAuth(booking.paypal_auth_id);
-            await pool.query(
-              'UPDATE booking_requests SET status = $1, payment_status = $2 WHERE id = $3',
-              ['rejected', 'voided', booking.id]
-            );
-          } else {
-            await pool.query(
-              'UPDATE booking_requests SET status = $1 WHERE id = $2',
-              ['rejected', booking.id]
-            );
-          }
+          await paypalVoidAuth(booking.paypal_auth_id);
+          await pool.query(
+            'UPDATE booking_requests SET status = $1, payment_status = $2 WHERE id = $3',
+            ['rejected', 'voided', booking.id]
+          );
         } catch (e) {
           console.error('Errore auto-rilasciamento PayPal:', e.message);
           await pool.query(

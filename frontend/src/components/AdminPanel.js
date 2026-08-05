@@ -675,10 +675,9 @@ const AdminPanel = ({ apiUrl }) => {
                       {booking.payment_method === 'bonifico'
                         ? (booking.status === 'confirmed' ? 'Pagato — bonifico verificato' : 'Da verificare (pagamento manuale)') :
                        booking.payment_status === 'authorized' ? 'Trattenuto — da addebitare alla conferma' :
-                       booking.payment_status === 'captured_now' ? 'Pagato subito (carta senza PayPal) — rimborsato se non confermi' :
                        booking.payment_status === 'captured' ? 'Pagato — acconto addebitato con PayPal' :
                        booking.payment_status === 'voided' ? 'Rilasciato (nessun addebito)' :
-                       booking.payment_status === 'refunded' ? 'Pagato — rimborsato' :
+                       booking.payment_status === 'refund_pending' ? 'Pagato — rimborso da fare a mano' :
                        booking.payment_status}
                     </span>
                   </div>
