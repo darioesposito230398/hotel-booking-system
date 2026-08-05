@@ -50,6 +50,14 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS room_daily_prices (
+        id SERIAL PRIMARY KEY,
+        room_type_id INTEGER NOT NULL REFERENCES room_types(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        UNIQUE (room_type_id, date)
+      );
+
       CREATE TABLE IF NOT EXISTS booking_requests (
         id SERIAL PRIMARY KEY,
         guest_name VARCHAR(255) NOT NULL,
@@ -174,6 +182,109 @@ app.get('/api/room-types', async (req, res) => {
   }
 });
 
+// Compute effective price (per-day overrides) for a date range
+async function getEffectivePrice(roomTypeId, checkIn, checkOut) {
+  const room = await pool.query(
+    'SELECT base_price FROM room_types WHERE id = $1',
+    [roomTypeId]
+  );
+  if (room.rows.length === 0) {
+    const err = new Error('Room type not found');
+    err.status = 404;
+    throw err;
+  }
+  const basePrice = parseFloat(room.rows[0].base_price);
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+
+  const overrides = await pool.query(`
+    SELECT date, price FROM room_daily_prices
+    WHERE room_type_id = $1 AND date >= $2::date AND date < $3::date
+  `, [roomTypeId, checkIn, checkOut]);
+
+  const overrideMap = {};
+  overrides.rows.forEach(r => {
+    overrideMap[r.date.toISOString().slice(0, 10)] = parseFloat(r.price);
+  });
+
+  const days = [];
+  let total = 0;
+  let nights = 0;
+  const cursor = new Date(start);
+  while (cursor < end) {
+    const key = cursor.toISOString().slice(0, 10);
+    const price = overrideMap[key] !== undefined ? overrideMap[key] : basePrice;
+    days.push({ date: key, price });
+    total += price;
+    nights += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return { nights, total: Math.round(total * 100) / 100, basePrice, days };
+}
+
+// Public quote: effective total for a date range
+app.get('/api/quote', async (req, res) => {
+  try {
+    const { roomTypeId, checkIn, checkOut } = req.query;
+    const result = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    res.json(result);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+// Admin: get daily price overrides for a room in a period
+app.get('/api/room-types/:id/prices', authenticateToken, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const result = await pool.query(`
+      SELECT date, price FROM room_daily_prices
+      WHERE room_type_id = $1 AND date >= $2::date AND date <= $3::date
+      ORDER BY date
+    `, [req.params.id, from, to]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: set/clear daily prices for a room (stripe-style booking)
+// Body: { prices: { "2026-08-05": 85, "2026-08-06": null, ... } }
+// A null value clears the override (reverts to base price).
+app.put('/api/room-types/:id/prices', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { prices } = req.body;
+    if (!prices || typeof prices !== 'object') {
+      return res.status(400).json({ error: 'prices map is required' });
+    }
+
+    await client.query('BEGIN');
+    for (const [date, value] of Object.entries(prices)) {
+      if (value === null || value === undefined || value === '') {
+        await client.query(
+          'DELETE FROM room_daily_prices WHERE room_type_id = $1 AND date = $2::date',
+          [id, date]
+        );
+      } else {
+        await client.query(`
+          INSERT INTO room_daily_prices (room_type_id, date, price)
+          VALUES ($1, $2::date, $3)
+          ON CONFLICT (room_type_id, date) DO UPDATE SET price = $3
+        `, [id, date, parseFloat(value)]);
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ message: 'Prices updated' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Room types admin - create
 app.post('/api/room-types', authenticateToken, async (req, res) => {
   try {
@@ -259,30 +370,23 @@ app.delete('/api/room-types/:id', authenticateToken, async (req, res) => {
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { roomTypeId, checkIn, checkOut, numGuests } = req.body;
-    
-    // Calculate total price
-    const roomType = await pool.query('SELECT * FROM room_types WHERE id = $1', [roomTypeId]);
-    if (roomType.rows.length === 0) {
-      return res.status(404).json({ error: 'Room type not found' });
-    }
-    
-    const nights = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
-    const totalPrice = roomType.rows[0].base_price * nights;
-    
+
+    // Calculate total price (per-day, with overrides)
+    const { total } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+
     // Create a PaymentIntent with amount but don't charge yet
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalPrice * 100), // Stripe uses cents
+      amount: Math.round(total * 100), // Stripe uses cents
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
     });
-    
+
     res.json({
       clientSecret: paymentIntent.client_secret,
-      totalPrice,
-      nights
+      totalPrice: total,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -298,10 +402,8 @@ app.post('/api/booking-requests', async (req, res) => {
     // Retrieve payment method from Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
-    // Calculate total price
-    const roomType = await pool.query('SELECT * FROM room_types WHERE id = $1', [roomTypeId]);
-    const nights = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
-    const totalPrice = roomType.rows[0].base_price * nights;
+    // Calculate total price (per-day, with overrides)
+    const { total: totalPrice, nights } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
     
     // Create Stripe customer and attach payment method
     const customer = await stripe.customers.create({

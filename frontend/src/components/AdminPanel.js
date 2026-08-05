@@ -12,6 +12,12 @@ const AdminPanel = ({ apiUrl }) => {
   const [newRoom, setNewRoom] = useState({ name: '', description: '', base_price: '', max_guests: 1, photo: '' });
   const [activeTab, setActiveTab] = useState('pending');
   const [search, setSearch] = useState('');
+  const [priceRoomId, setPriceRoomId] = useState('');
+  const [priceMonth, setPriceMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [priceGrid, setPriceGrid] = useState({});
+  const [bulkFrom, setBulkFrom] = useState('');
+  const [bulkTo, setBulkTo] = useState('');
+  const [bulkPrice, setBulkPrice] = useState('');
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -54,6 +60,91 @@ const AdminPanel = ({ apiUrl }) => {
     fetchRooms();
     fetchPaymentConfig();
   }, [fetchBookings, fetchRooms, fetchPaymentConfig]);
+
+  // Load daily price overrides for the selected room+month
+  useEffect(() => {
+    const loadPrices = async () => {
+      if (!priceRoomId || !priceMonth) return;
+      const [year, month] = priceMonth.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const from = `${priceMonth}-01`;
+      const to = `${priceMonth}-${String(lastDay).padStart(2, '0')}`;
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${apiUrl}/room-types/${priceRoomId}/prices`, {
+          params: { from, to },
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const overrides = {};
+        res.data.forEach(r => { overrides[r.date.slice(0, 10)] = parseFloat(r.price); });
+
+        const room = rooms.find(r => r.id === parseInt(priceRoomId, 10));
+        const base = room ? parseFloat(room.base_price) : 0;
+        const grid = {};
+        for (let d = 1; d <= lastDay; d++) {
+          const key = `${priceMonth}-${String(d).padStart(2, '0')}`;
+          grid[key] = overrides[key] !== undefined ? overrides[key] : base;
+        }
+        setPriceGrid(grid);
+      } catch (err) {
+        console.error('Error loading price overrides:', err);
+      }
+    };
+    loadPrices();
+  }, [priceRoomId, priceMonth, rooms, apiUrl]);
+
+  const saveDayPrice = async (date) => {
+    const room = rooms.find(r => r.id === parseInt(priceRoomId, 10));
+    const base = room ? parseFloat(room.base_price) : 0;
+    const current = priceGrid[date];
+    const val = (current === undefined || current === '' || current === null) ? null : parseFloat(current);
+    const payload = {};
+    payload[date] = (val !== null && val !== base) ? val : null;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${apiUrl}/room-types/${priceRoomId}/prices`, { prices: payload },
+        { headers: { Authorization: `Bearer ${token}` } });
+      setPriceGrid(prev => ({ ...prev, [date]: (val !== null && val !== base) ? val : base }));
+    } catch (err) {
+      setError('Errore nel salvataggio della tariffa del giorno');
+    }
+  };
+
+  const applyRange = async (clear) => {
+    if (!bulkFrom || !bulkTo) return;
+    const payload = {};
+    const d = new Date(bulkFrom);
+    const end = new Date(bulkTo);
+    while (d <= end) {
+      payload[d.toISOString().slice(0, 10)] = clear ? null : (parseFloat(bulkPrice) || null);
+      d.setDate(d.getDate() + 1);
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${apiUrl}/room-types/${priceRoomId}/prices`, { prices: payload },
+        { headers: { Authorization: `Bearer ${token}` } });
+      // refresh grid for current month
+      const [year, month] = priceMonth.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const overrides = {};
+      const res = await axios.get(`${apiUrl}/room-types/${priceRoomId}/prices`, {
+        params: { from: `${priceMonth}-01`, to: `${priceMonth}-${String(lastDay).padStart(2, '0')}` },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      res.data.forEach(r => { overrides[r.date.slice(0, 10)] = parseFloat(r.price); });
+      const room = rooms.find(r => r.id === parseInt(priceRoomId, 10));
+      const base = room ? parseFloat(room.base_price) : 0;
+      const grid = {};
+      for (let d = 1; d <= lastDay; d++) {
+        const key = `${priceMonth}-${String(d).padStart(2, '0')}`;
+        grid[key] = overrides[key] !== undefined ? overrides[key] : base;
+      }
+      setPriceGrid(grid);
+      setError('');
+    } catch (err) {
+      setError('Errore nell\'applicazione delle tariffe');
+    }
+  };
 
   const updatePaymentConfig = async (newConfig) => {
     try {
@@ -396,6 +487,64 @@ const AdminPanel = ({ apiUrl }) => {
                   Elimina
                 </button>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pricing-manager">
+        <div className="pricing-header">
+          <h3>Tariffe giornaliere</h3>
+          <p>Imposta il prezzo per singolo giorno o per un periodo. Il giorno senza tariffa usa il prezzo base della camera.</p>
+        </div>
+
+        <div className="pricing-controls">
+          <label>
+            Camera
+            <select value={priceRoomId} onChange={(e) => setPriceRoomId(e.target.value)}>
+              <option value="">— Seleziona camera —</option>
+              {rooms.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.name} (€{r.base_price})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Mese
+            <input type="month" value={priceMonth} onChange={(e) => setPriceMonth(e.target.value)} />
+          </label>
+        </div>
+
+        <div className="pricing-range">
+          <input type="date" value={bulkFrom} onChange={(e) => setBulkFrom(e.target.value)} title="Da" />
+          <span>→</span>
+          <input type="date" value={bulkTo} onChange={(e) => setBulkTo(e.target.value)} title="A" />
+          <input
+            type="number"
+            step="1"
+            placeholder="€ prezzo"
+            value={bulkPrice}
+            onChange={(e) => setBulkPrice(e.target.value)}
+          />
+          <button onClick={() => applyRange(false)} className="btn btn-success">Applica al periodo</button>
+          <button onClick={() => applyRange(true)} className="btn btn-secondary">Ripristina prezzo base</button>
+        </div>
+
+        <div className="pricing-calendar">
+          {Object.keys(priceGrid).map(date => (
+            <div
+              key={date}
+              className={date < new Date().toISOString().slice(0, 10) ? 'pricing-day past' : 'pricing-day'}
+            >
+              <span className="pricing-day-label">{new Date(date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+              <input
+                type="number"
+                step="1"
+                value={priceGrid[date]}
+                onChange={(e) => setPriceGrid(prev => ({ ...prev, [date]: e.target.value }))}
+                onBlur={() => saveDayPrice(date)}
+              />
             </div>
           ))}
         </div>

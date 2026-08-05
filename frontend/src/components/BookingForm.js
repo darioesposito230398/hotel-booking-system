@@ -41,24 +41,26 @@ const BookingForm = ({ apiUrl }) => {
   }, [apiUrl]);
 
   useEffect(() => {
-    const calculatePrice = () => {
-      if (formData.checkIn && formData.checkOut && formData.roomTypeId) {
-        const checkIn = new Date(formData.checkIn);
-        const checkOut = new Date(formData.checkOut);
-        const diffTime = Math.abs(checkOut - checkIn);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays > 0) {
-          const roomType = roomTypes.find(r => r.id === parseInt(formData.roomTypeId));
-          if (roomType) {
-            setNights(diffDays);
-            setTotalPrice(roomType.base_price * diffDays);
+    const fetchQuote = async () => {
+      if (!formData.checkIn || !formData.checkOut || !formData.roomTypeId) {
+        return;
+      }
+      try {
+        const response = await axios.get(`${apiUrl}/quote`, {
+          params: {
+            roomTypeId: formData.roomTypeId,
+            checkIn: formData.checkIn,
+            checkOut: formData.checkOut
           }
-        }
+        });
+        setNights(response.data.nights);
+        setTotalPrice(response.data.total);
+      } catch (err) {
+        console.error('Error fetching quote:', err);
       }
     };
-    calculatePrice();
-  }, [formData.checkIn, formData.checkOut, formData.roomTypeId, roomTypes]);
+    fetchQuote();
+  }, [formData.checkIn, formData.checkOut, formData.roomTypeId, apiUrl]);
 
   const getRoomPhoto = (room) => {
     if (room?.photo) {
@@ -277,7 +279,7 @@ if (success) {
             <div>
               <div className="price-total">€{totalPrice.toFixed(2)}</div>
               <div className="price-breakdown">
-                {nights} {nights === 1 ? t('night.singular') : t('night.plural')} × €{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.base_price}
+                {nights} {nights === 1 ? t('night.singular') : t('night.plural')} · {t('price.dynamic')}
               </div>
             </div>
             <div className="price-avviso">{t('price.nocharge')}</div>

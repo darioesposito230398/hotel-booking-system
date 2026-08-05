@@ -898,6 +898,120 @@ h1, h2, h3, h4, h5, h6 {
   accent-color: var(--gold);
 }
 
+/* ---------- Pricing manager (admin) ---------- */
+.pricing-manager {
+  margin: 2rem 0;
+  padding: 1.5rem 1.75rem;
+  background: white;
+  border: 1px solid var(--mist);
+  border-radius: 12px;
+}
+
+.pricing-header h3 {
+  color: var(--bay);
+  margin-bottom: 0.35rem;
+}
+
+.pricing-header p {
+  font-size: 0.88rem;
+  color: rgba(27, 36, 48, 0.62);
+  margin-bottom: 1.25rem;
+}
+
+.pricing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pricing-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bay);
+}
+
+.pricing-controls select,
+.pricing-controls input[type='month'],
+.pricing-range input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.pricing-controls select:focus,
+.pricing-controls input:focus,
+.pricing-range input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.pricing-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--paper);
+  border: 1px solid var(--mist);
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+}
+
+.pricing-range .btn {
+  padding: 0.55rem 1rem;
+}
+
+.pricing-calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.6rem;
+}
+
+.pricing-day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  background: #fff;
+}
+
+.pricing-day.past {
+  opacity: 0.5;
+}
+
+.pricing-day-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(27, 36, 48, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pricing-day input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--mist);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.pricing-day input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
 /* ---------- Booking area (admin, extranet style) ---------- */
 .booking-area {
   margin: 2rem 0 0;
