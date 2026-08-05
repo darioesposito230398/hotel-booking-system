@@ -833,6 +833,34 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.75rem;
 }
 
+.admin-nav {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--mist);
+  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.admin-nav-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  color: #55606e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-nav-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.admin-nav-btn.active {
+  background: var(--gold);
+  color: #fff;
+  border-color: var(--gold);
+}
+
 .booking-list {
   display: flex;
   flex-direction: column;

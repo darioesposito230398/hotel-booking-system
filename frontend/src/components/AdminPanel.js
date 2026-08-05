@@ -13,6 +13,7 @@ const AdminPanel = ({ apiUrl }) => {
   const [newRoom, setNewRoom] = useState({ name: '', description: '', max_guests: 1, photo: '' });
   const [activeTab, setActiveTab] = useState('pending');
   const [docToView, setDocToView] = useState(null);
+  const [section, setSection] = useState('bookings');
   const [search, setSearch] = useState('');
   const [priceRoomId, setPriceRoomId] = useState('');
   const [priceMonth, setPriceMonth] = useState(() => {
@@ -442,7 +443,41 @@ const AdminPanel = ({ apiUrl }) => {
         </button>
       </div>
 
+      <nav className="admin-nav">
+        <button
+          type="button"
+          className={`admin-nav-btn ${section === 'bookings' ? 'active' : ''}`}
+          onClick={() => setSection('bookings')}
+        >
+          Prenotazioni
+        </button>
+        <button
+          type="button"
+          className={`admin-nav-btn ${section === 'rooms' ? 'active' : ''}`}
+          onClick={() => setSection('rooms')}
+        >
+          Gestione Camere
+        </button>
+        <button
+          type="button"
+          className={`admin-nav-btn ${section === 'info' ? 'active' : ''}`}
+          onClick={() => setSection('info')}
+        >
+          Info & Bonifico
+        </button>
+      </nav>
+
       {error && <div className="error-message">{error}</div>}
+
+      {section === 'info' && (
+      <>
+      <div className="bonifico-config">
+        <h3>Info Hotel</h3>
+        <p><strong>Indirizzo:</strong> Via Milano, 96 · Napoli</p>
+        <p><strong>Email:</strong> info@hotelvittorioveneto.com</p>
+        <p><strong>Check-in:</strong> dalle 14:00 · <strong>Check-out:</strong> entro le 11:00</p>
+        <p style={{ marginTop: '0.5rem' }}>Dopo le 19:00 scrivono a info@hotel... per il check-in a distanza.</p>
+      </div>
 
       <div className="bonifico-config">
         <h3>Bonifico istantaneo (per clienti che pagano con bonifico)</h3>
@@ -465,7 +500,10 @@ const AdminPanel = ({ apiUrl }) => {
         </div>
         <button onClick={saveBonifico} className="btn btn-primary">Salva dati bonifico</button>
       </div>
+      </>
+      )}
 
+      {section === 'rooms' && (
       <div className="rooms-manager">
         <div className="rooms-manager-header">
           <h3>Gestione Camere</h3>
@@ -548,7 +586,9 @@ const AdminPanel = ({ apiUrl }) => {
           ))}
         </div>
       </div>
+      )}
 
+      {section === 'rooms' && (
       <div className="pricing-manager">
         <div className="pricing-header">
           <h3>Tariffe giornaliere</h3>
@@ -610,7 +650,9 @@ const AdminPanel = ({ apiUrl }) => {
           ))}
         </div>
       </div>
+      )}
 
+      {section === 'bookings' && (
       <div className="booking-area">
         <div className="booking-area-header">
           <h3>Prenotazioni</h3>
@@ -802,6 +844,7 @@ const AdminPanel = ({ apiUrl }) => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };
