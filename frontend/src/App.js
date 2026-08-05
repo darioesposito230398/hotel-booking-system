@@ -139,7 +139,7 @@ function App() {
               <h4 className="room-name">{roomName('Singola Bagno Condiviso')}</h4>
               <p className="room-desc">{t('desc.singola.shared')}</p>
               <div className="room-meta">
-                <span className="room-price">€45 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-price direct">{t('rooms.directBadge')}</span>
                 <span className="room-guests">{t('rooms.guest.1')}</span>
               </div>
             </div>
@@ -150,7 +150,7 @@ function App() {
               <h4 className="room-name">{roomName('Doppia/Twin Bagno Condiviso')}</h4>
               <p className="room-desc">{t('desc.twinshared')}</p>
               <div className="room-meta">
-                <span className="room-price">€55 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-price direct">{t('rooms.directBadge')}</span>
                 <span className="room-guests">{t('rooms.guest.2')}</span>
               </div>
             </div>
@@ -161,7 +161,7 @@ function App() {
               <h4 className="room-name">{roomName('Singola Bagno Privato')}</h4>
               <p className="room-desc">{t('desc.singola.priv')}</p>
               <div className="room-meta">
-                <span className="room-price">€60 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-price direct">{t('rooms.directBadge')}</span>
                 <span className="room-guests">{t('rooms.guest.1')}</span>
               </div>
             </div>
@@ -172,7 +172,7 @@ function App() {
               <h4 className="room-name">{roomName('Doppia Standard')}</h4>
               <p className="room-desc">{t('desc.doppia')}</p>
               <div className="room-meta">
-                <span className="room-price">€75 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-price direct">{t('rooms.directBadge')}</span>
                 <span className="room-guests">{t('rooms.guest.2')}</span>
               </div>
             </div>
@@ -183,7 +183,7 @@ function App() {
               <h4 className="room-name">{roomName('Tripla Standard')}</h4>
               <p className="room-desc">{t('desc.tripla')}</p>
               <div className="room-meta">
-                <span className="room-price">€90 <span className="per-night">{t('rooms.perNight')}</span></span>
+                <span className="room-price direct">{t('rooms.directBadge')}</span>
                 <span className="room-guests">{t('rooms.guest.3')}</span>
               </div>
             </div>

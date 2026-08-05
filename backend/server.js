@@ -10,6 +10,9 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 const { body, validationResult } = require('express-validator');
 
+// Sconto promozionale applicato al cliente (10% sul prezzo pieno)
+const BOOKING_DISCOUNT = 0.10;
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -219,7 +222,9 @@ async function getEffectivePrice(roomTypeId, checkIn, checkOut) {
     nights += 1;
     cursor.setDate(cursor.getDate() + 1);
   }
-  return { nights, total: Math.round(total * 100) / 100, basePrice, days };
+  const roundedTotal = Math.round(total * 100) / 100;
+  const discountedTotal = Math.round(roundedTotal * (1 - BOOKING_DISCOUNT) * 100) / 100;
+  return { nights, total: roundedTotal, discountedTotal, discount: BOOKING_DISCOUNT, basePrice, days };
 }
 
 // Public quote: effective total for a date range
@@ -371,19 +376,21 @@ app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { roomTypeId, checkIn, checkOut, numGuests } = req.body;
 
-    // Calculate total price (per-day, with overrides)
-    const { total } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    // Calculate total price (per-day, with overrides) and apply discount
+    const { total, discountedTotal } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
 
-    // Create a PaymentIntent with amount but don't charge yet
+    // Create a PaymentIntent with the discounted amount but don't charge yet
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(total * 100), // Stripe uses cents
+      amount: Math.round(discountedTotal * 100), // Stripe uses cents
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
     });
 
     res.json({
       clientSecret: paymentIntent.client_secret,
-      totalPrice: total,
+      totalPrice: discountedTotal,
+      originalTotal: total,
+      discount: BOOKING_DISCOUNT,
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -402,8 +409,8 @@ app.post('/api/booking-requests', async (req, res) => {
     // Retrieve payment method from Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
-    // Calculate total price (per-day, with overrides)
-    const { total: totalPrice, nights } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
+    // Calculate total price (per-day, with overrides) and apply discount
+    const { discountedTotal: totalPrice, nights } = await getEffectivePrice(roomTypeId, checkIn, checkOut);
     
     // Create Stripe customer and attach payment method
     const customer = await stripe.customers.create({

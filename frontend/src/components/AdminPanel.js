@@ -9,7 +9,7 @@ const AdminPanel = ({ apiUrl }) => {
   const [error, setError] = useState('');
   const [roomsDirty, setRoomsDirty] = useState({});
   const [showNewRoom, setShowNewRoom] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', description: '', base_price: '', max_guests: 1, photo: '' });
+  const [newRoom, setNewRoom] = useState({ name: '', description: '', max_guests: 1, photo: '' });
   const [activeTab, setActiveTab] = useState('pending');
   const [search, setSearch] = useState('');
   const [priceRoomId, setPriceRoomId] = useState('');
@@ -165,7 +165,7 @@ const AdminPanel = ({ apiUrl }) => {
       const payload = {
         name: room.name,
         description: room.description,
-        base_price: parseFloat(room.base_price),
+        base_price: parseFloat(room.base_price) || 0,
         max_guests: parseInt(room.max_guests, 10) || 1,
         photo: room.photo || null
       };
@@ -190,12 +190,12 @@ const AdminPanel = ({ apiUrl }) => {
       await axios.post(`${apiUrl}/room-types`, {
         name: newRoom.name,
         description: newRoom.description,
-        base_price: parseFloat(newRoom.base_price),
+        base_price: 0,
         max_guests: parseInt(newRoom.max_guests, 10) || 1,
         photo: newRoom.photo || null
       }, { headers: { Authorization: `Bearer ${token}` } });
       setShowNewRoom(false);
-      setNewRoom({ name: '', description: '', base_price: '', max_guests: 1, photo: '' });
+      setNewRoom({ name: '', description: '', max_guests: 1, photo: '' });
       await fetchRooms();
       setError('');
     } catch (err) {
@@ -399,25 +399,19 @@ const AdminPanel = ({ apiUrl }) => {
 
       <div className="rooms-manager">
         <div className="rooms-manager-header">
-          <h3>Gestione Camere e Prezzi</h3>
+          <h3>Gestione Camere</h3>
           <button onClick={() => setShowNewRoom(!showNewRoom)} className="btn btn-gold">
             {showNewRoom ? 'Annulla' : '+ Nuova camera'}
           </button>
         </div>
 
-{showNewRoom && (
+        {showNewRoom && (
           <div className="room-edit new">
             <input
               type="text"
               placeholder="Nome camera (es. Quadrupla Standard)"
               value={newRoom.name}
               onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-            />
-            <input
-              type="number"
-              placeholder="Prezzo notte €"
-              value={newRoom.base_price}
-              onChange={(e) => setNewRoom({ ...newRoom, base_price: e.target.value })}
             />
             <input
               type="number"
@@ -452,12 +446,6 @@ const AdminPanel = ({ apiUrl }) => {
                 />
                 <input
                   type="number"
-                  step="1"
-                  value={room.base_price}
-                  onChange={(e) => setRoomField(room.id, 'base_price', e.target.value)}
-                />
-                <input
-                  type="number"
                   min="1"
                   value={room.max_guests}
                   onChange={(e) => setRoomField(room.id, 'max_guests', e.target.value)}
@@ -475,7 +463,7 @@ const AdminPanel = ({ apiUrl }) => {
                 onChange={(e) => setRoomField(room.id, 'description', e.target.value)}
               />
               <div className="room-edit-actions">
-                <span className="room-edit-price-label">€ (prezzo notte)</span>
+                <span className="room-edit-price-label">Le tariffe si impostano nel calendario qui sotto</span>
                 <button
                   onClick={() => saveRoom(room)}
                   className="btn btn-success"
@@ -495,7 +483,7 @@ const AdminPanel = ({ apiUrl }) => {
       <div className="pricing-manager">
         <div className="pricing-header">
           <h3>Tariffe giornaliere</h3>
-          <p>Imposta il prezzo per singolo giorno o per un periodo. Il giorno senza tariffa usa il prezzo base della camera.</p>
+          <p>Imposta il prezzo per singolo giorno o per un periodo. I prezzi inseriti equivalgono alle tariffe di Booking: al cliente viene applicato automaticamente lo sconto del 10%.</p>
         </div>
 
         <div className="pricing-controls">
@@ -505,7 +493,7 @@ const AdminPanel = ({ apiUrl }) => {
               <option value="">— Seleziona camera —</option>
               {rooms.map(r => (
                 <option key={r.id} value={r.id}>
-                  {r.name} (€{r.base_price})
+                  {r.name}
                 </option>
               ))}
             </select>

@@ -20,6 +20,8 @@ const BookingForm = ({ apiUrl }) => {
     notes: ''
   });
   const [totalPrice, setTotalPrice] = useState(0);
+  const [originalTotal, setOriginalTotal] = useState(0);
+  const [discount, setDiscount] = useState(0.1);
   const [nights, setNights] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +56,9 @@ const BookingForm = ({ apiUrl }) => {
           }
         });
         setNights(response.data.nights);
-        setTotalPrice(response.data.total);
+        setOriginalTotal(response.data.total);
+        setTotalPrice(response.data.discountedTotal);
+        setDiscount(response.data.discount || 0.1);
       } catch (err) {
         console.error('Error fetching quote:', err);
       }
@@ -277,9 +281,16 @@ if (success) {
         {totalPrice > 0 && (
           <div className="price-display">
             <div>
-              <div className="price-total">€{totalPrice.toFixed(2)}</div>
               <div className="price-breakdown">
                 {nights} {nights === 1 ? t('night.singular') : t('night.plural')} · {t('price.dynamic')}
+              </div>
+              <div className="price-original">
+                €{originalTotal.toFixed(2)}
+              </div>
+              <div className="price-total">€{totalPrice.toFixed(2)}</div>
+              <div className="price-discount-line">
+                <span className="price-discount-badge">–{Math.round(discount * 100)}%</span>
+                {t('price.discount')}
               </div>
             </div>
             <div className="price-avviso">{t('price.nocharge')}</div>
