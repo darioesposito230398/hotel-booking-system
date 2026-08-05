@@ -898,6 +898,104 @@ h1, h2, h3, h4, h5, h6 {
   accent-color: var(--gold);
 }
 
+/* ---------- Booking area (admin, extranet style) ---------- */
+.booking-area {
+  margin: 2rem 0 0;
+}
+
+.booking-area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.booking-area-header h3 {
+  color: var(--bay);
+}
+
+.booking-search {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  width: 260px;
+  max-width: 100%;
+  background: #fff;
+}
+
+.booking-search:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.booking-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--mist);
+  padding-bottom: 0.75rem;
+}
+
+.booking-tab {
+  background: var(--paper);
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(27, 36, 48, 0.75);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.booking-tab:hover {
+  border-color: var(--gold-soft);
+}
+
+.booking-tab.active {
+  background: var(--bay);
+  border-color: var(--bay);
+  color: #fff;
+}
+
+.booking-tab-count {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--bay);
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  text-align: center;
+}
+
+.booking-tab:not(.active) .booking-tab-count {
+  background: var(--mist);
+  color: var(--bay);
+}
+
+.booking-guest-email {
+  font-size: 0.82rem;
+  color: rgba(27, 36, 48, 0.6);
+}
+
+.booking-card.cancelled {
+  border-left-color: var(--ink);
+}
+
+.booking-status.cancelled {
+  background: var(--mist);
+  color: var(--bay);
+}
+
 /* ---------- Rooms management (admin) ---------- */
 .rooms-manager {
   margin: 2rem 0;

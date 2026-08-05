@@ -60,7 +60,10 @@ const BookingForm = ({ apiUrl }) => {
     calculatePrice();
   }, [formData.checkIn, formData.checkOut, formData.roomTypeId, roomTypes]);
 
-  const getRoomPhoto = (roomName) => {
+  const getRoomPhoto = (room) => {
+    if (room?.photo) {
+      return `/images/rooms/${room.photo}`;
+    }
     const photoMap = {
       'Singola Bagno Condiviso': '/images/rooms/singola-bagno-comune.jpg',
       'Singola Bagno Privato': '/images/rooms/singola-bagno-privato.png',
@@ -68,7 +71,7 @@ const BookingForm = ({ apiUrl }) => {
       'Doppia/Twin Bagno Condiviso': '/images/rooms/doppia-standard.jpg',
       'Tripla Standard': '/images/rooms/tripla-standard.jpg'
     };
-    return photoMap[roomName] || '/images/rooms/doppia-standard.jpg';
+    return photoMap[room?.name] || '/images/rooms/doppia-standard.jpg';
   };
 
   const handleInputChange = (e) => {
@@ -191,7 +194,7 @@ if (success) {
           {formData.roomTypeId && (
             <div className="room-preview">
               <img
-                src={getRoomPhoto(roomName(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name))}
+                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId)))}
                 alt="Camera selezionata"
               />
               <div className="room-preview-info">

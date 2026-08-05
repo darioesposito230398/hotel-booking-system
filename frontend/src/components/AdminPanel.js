@@ -9,7 +9,9 @@ const AdminPanel = ({ apiUrl }) => {
   const [error, setError] = useState('');
   const [roomsDirty, setRoomsDirty] = useState({});
   const [showNewRoom, setShowNewRoom] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', description: '', base_price: '', max_guests: 1 });
+  const [newRoom, setNewRoom] = useState({ name: '', description: '', base_price: '', max_guests: 1, photo: '' });
+  const [activeTab, setActiveTab] = useState('pending');
+  const [search, setSearch] = useState('');
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -73,7 +75,8 @@ const AdminPanel = ({ apiUrl }) => {
         name: room.name,
         description: room.description,
         base_price: parseFloat(room.base_price),
-        max_guests: parseInt(room.max_guests, 10) || 1
+        max_guests: parseInt(room.max_guests, 10) || 1,
+        photo: room.photo || null
       };
       if (room.id) {
         await axios.put(`${apiUrl}/room-types/${room.id}`, payload,
@@ -97,10 +100,11 @@ const AdminPanel = ({ apiUrl }) => {
         name: newRoom.name,
         description: newRoom.description,
         base_price: parseFloat(newRoom.base_price),
-        max_guests: parseInt(newRoom.max_guests, 10) || 1
+        max_guests: parseInt(newRoom.max_guests, 10) || 1,
+        photo: newRoom.photo || null
       }, { headers: { Authorization: `Bearer ${token}` } });
       setShowNewRoom(false);
-      setNewRoom({ name: '', description: '', base_price: '', max_guests: 1 });
+      setNewRoom({ name: '', description: '', base_price: '', max_guests: 1, photo: '' });
       await fetchRooms();
       setError('');
     } catch (err) {
@@ -149,6 +153,76 @@ const AdminPanel = ({ apiUrl }) => {
       } catch (err) {
         setError('Errore nel rifiuto della prenotazione');
       }
+    }
+  };
+
+  const handleCancel = async (bookingId) => {
+    if (window.confirm('Cancellare questa prenotazione confermata?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post(`${apiUrl}/booking-requests/${bookingId}/cancel`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        fetchBookings();
+      } catch (err) {
+        setError('Errore nella cancellazione della prenotazione');
+      }
+    }
+  };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const bookingInTab = (b) => {
+    switch (activeTab) {
+      case 'pending':
+        return b.status === 'pending';
+      case 'upcoming':
+        return b.status === 'confirmed' && b.check_in >= today;
+      case 'current':
+        return b.status === 'confirmed' && b.check_in <= today && b.check_out >= today;
+      case 'past':
+        return b.status === 'confirmed' && b.check_out < today;
+      case 'cancelled':
+        return b.status === 'rejected' || b.status === 'cancelled';
+      default:
+        return true;
+    }
+  };
+
+  const countInTab = (tab) => {
+    return bookings.filter(b => {
+      switch (tab) {
+        case 'pending':
+          return b.status === 'pending';
+        case 'upcoming':
+          return b.status === 'confirmed' && b.check_in >= today;
+        case 'current':
+          return b.status === 'confirmed' && b.check_in <= today && b.check_out >= today;
+        case 'past':
+          return b.status === 'confirmed' && b.check_out < today;
+        case 'cancelled':
+          return b.status === 'rejected' || b.status === 'cancelled';
+        default:
+          return true;
+      }
+    }).length;
+  };
+
+  const visibleBookings = bookings.filter(b =>
+    bookingInTab(b) &&
+    (!search ||
+      (b.guest_name && b.guest_name.toLowerCase().includes(search.toLowerCase())) ||
+      (b.guest_email && b.guest_email.toLowerCase().includes(search.toLowerCase())))
+  );
+
+  const statusLabel = (status) => {
+    switch (status) {
+      case 'pending': return 'In attesa';
+      case 'confirmed': return 'Confermata';
+      case 'rejected': return 'Rifiutata';
+      case 'cancelled': return 'Cancellata';
+      default: return status;
     }
   };
 
@@ -240,7 +314,7 @@ const AdminPanel = ({ apiUrl }) => {
           </button>
         </div>
 
-        {showNewRoom && (
+{showNewRoom && (
           <div className="room-edit new">
             <input
               type="text"
@@ -260,6 +334,12 @@ const AdminPanel = ({ apiUrl }) => {
               placeholder="Ospiti max"
               value={newRoom.max_guests}
               onChange={(e) => setNewRoom({ ...newRoom, max_guests: e.target.value })}
+            />
+            <input
+              type="text"
+              placeholder="Immagine (es. doppia-standard.jpg)"
+              value={newRoom.photo}
+              onChange={(e) => setNewRoom({ ...newRoom, photo: e.target.value })}
             />
             <textarea
               placeholder="Descrizione"
@@ -292,6 +372,12 @@ const AdminPanel = ({ apiUrl }) => {
                   onChange={(e) => setRoomField(room.id, 'max_guests', e.target.value)}
                 />
               </div>
+              <input
+                type="text"
+                placeholder="Immagine (es. doppia-standard.jpg)"
+                value={room.photo || ''}
+                onChange={(e) => setRoomField(room.id, 'photo', e.target.value)}
+              />
               <textarea
                 rows="2"
                 value={room.description}
@@ -315,90 +401,131 @@ const AdminPanel = ({ apiUrl }) => {
         </div>
       </div>
 
-      <div className="booking-list">
-        <h3>Richieste di prenotazione</h3>
-        {bookings.length === 0 ? (
-          <p>Nessuna richiesta di prenotazione trovata.</p>
-        ) : (
-          bookings.map(booking => (
-            <div key={booking.id} className={`booking-card ${booking.status}`}>
-              <div className="booking-card-header">
-                <h4>{booking.guest_name}</h4>
-                <span className={`booking-status ${booking.status}`}>
-                  {booking.status === 'pending' ? 'In Attesa di Conferma' :
-                   booking.status === 'confirmed' ? 'Confermata' : 'Rifiutata'}
-                </span>
-              </div>
+      <div className="booking-area">
+        <div className="booking-area-header">
+          <h3>Prenotazioni</h3>
+          <input
+            type="search"
+            className="booking-search"
+            placeholder="Cerca per nome o email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-              <div className="booking-card-details">
-                <div className="detail-item">
-                  <span className="detail-label">Check-in</span>
-                  <span className="detail-value">{formatDate(booking.check_in)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Check-out</span>
-                  <span className="detail-value">{formatDate(booking.check_out)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Camera</span>
-                  <span className="detail-value">{booking.room_type_name}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Ospiti</span>
-                  <span className="detail-value">{booking.num_guests}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Prezzo Totale</span>
-                  <span className="detail-value">€{booking.total_price}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Data Richiesta</span>
-                  <span className="detail-value">{formatDateTime(booking.created_at)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Email</span>
-                  <span className="detail-value">{booking.guest_email}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Telefono</span>
-                  <span className="detail-value">{booking.guest_phone || 'Non fornito'}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Stato Pagamento</span>
-                  <span className="detail-value">
-                    {booking.payment_status === 'tokenized' ? 'Dati carta salvati (tokenizzati)' :
-                     booking.payment_status === 'charged' ? 'Addebitato' :
-                     booking.payment_status === 'authorized' ? 'Pre-autorizzato' : booking.payment_status}
+        <div className="booking-tabs">
+          {[
+            { id: 'pending', label: 'In attesa' },
+            { id: 'upcoming', label: 'In arrivo' },
+            { id: 'current', label: 'Ospiti attuali' },
+            { id: 'past', label: 'Concluse' },
+            { id: 'cancelled', label: 'Cancellate' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`booking-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+              <span className="booking-tab-count">{countInTab(tab.id)}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="booking-list">
+          {visibleBookings.length === 0 ? (
+            <p>Nessuna prenotazione in questa categoria.</p>
+          ) : (
+            visibleBookings.map(booking => (
+              <div key={booking.id} className={`booking-card ${booking.status}`}>
+                <div className="booking-card-header">
+                  <div>
+                    <h4>{booking.guest_name}</h4>
+                    <span className="booking-guest-email">{booking.guest_email}</span>
+                  </div>
+                  <span className={`booking-status ${booking.status}`}>
+                    {statusLabel(booking.status)}
                   </span>
                 </div>
+
+                <div className="booking-card-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Check-in</span>
+                    <span className="detail-value">{formatDate(booking.check_in)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Check-out</span>
+                    <span className="detail-value">{formatDate(booking.check_out)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Camera</span>
+                    <span className="detail-value">{booking.room_type_name || '—'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Ospiti</span>
+                    <span className="detail-value">{booking.num_guests}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Prezzo Totale</span>
+                    <span className="detail-value">€{booking.total_price}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Data Richiesta</span>
+                    <span className="detail-value">{formatDateTime(booking.created_at)}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Telefono</span>
+                    <span className="detail-value">{booking.guest_phone || 'Non fornito'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Stato Pagamento</span>
+                    <span className="detail-value">
+                      {booking.payment_status === 'tokenized' ? 'Dati carta salvati (tokenizzati)' :
+                       booking.payment_status === 'charged' ? 'Addebitato' :
+                       booking.payment_status === 'authorized' ? 'Pre-autorizzato' : booking.payment_status}
+                    </span>
+                  </div>
+                </div>
+
+                {booking.notes && (
+                  <div className="detail-item" style={{ marginBottom: '1rem' }}>
+                    <span className="detail-label">Note del cliente</span>
+                    <span className="detail-value">{booking.notes}</span>
+                  </div>
+                )}
+
+                {booking.status === 'pending' && (
+                  <div className="booking-card-actions">
+                    <button
+                      onClick={() => handleConfirm(booking.id)}
+                      className="btn btn-success"
+                    >
+                      Accetta
+                    </button>
+                    <button
+                      onClick={() => handleReject(booking.id)}
+                      className="btn btn-danger"
+                    >
+                      Rifiuta
+                    </button>
+                  </div>
+                )}
+
+                {booking.status === 'confirmed' && (
+                  <div className="booking-card-actions">
+                    <button
+                      onClick={() => handleCancel(booking.id)}
+                      className="btn btn-danger"
+                    >
+                      Cancella prenotazione
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {booking.notes && (
-                <div className="detail-item" style={{ marginBottom: '1rem' }}>
-                  <span className="detail-label">Note del cliente</span>
-                  <span className="detail-value">{booking.notes}</span>
-                </div>
-              )}
-
-              {booking.status === 'pending' && (
-                <div className="booking-card-actions">
-                  <button
-                    onClick={() => handleConfirm(booking.id)}
-                    className="btn btn-success"
-                  >
-                    Conferma
-                  </button>
-                  <button
-                    onClick={() => handleReject(booking.id)}
-                    className="btn btn-danger"
-                  >
-                    Rifiuta
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

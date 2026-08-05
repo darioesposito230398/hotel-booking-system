@@ -46,6 +46,7 @@ async function initDatabase() {
         description TEXT,
         base_price DECIMAL(10,2) NOT NULL,
         max_guests INTEGER NOT NULL,
+        photo VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -83,16 +84,19 @@ async function initDatabase() {
       ON CONFLICT (config_key) DO NOTHING;
     `);
 
+        // Ensure photo column exists on existing tables
+    await client.query('ALTER TABLE room_types ADD COLUMN IF NOT EXISTS photo VARCHAR(255)');
+
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
     if (parseInt(existingRooms.rows[0].count, 10) === 0) {
       await client.query(`
-        INSERT INTO room_types (name, description, base_price, max_guests) VALUES
-        ('Singola Bagno Condiviso', 'Camera singola con TV, scrivania, armadio e bagno condiviso. 12 m²', 45.00, 1),
-        ('Doppia/Twin Bagno Condiviso', 'Camera doppia o matrimoniale con TV, scrivania, balcone e bagno condiviso. 15 m²', 55.00, 2),
-        ('Singola Bagno Privato', 'Camera singola con aria condizionata, TV, bagno privato con bidet. 12 m²', 60.00, 1),
-        ('Doppia Standard', 'Camera doppia con bagno privato, TV, balcone. 15 m²', 75.00, 2),
-        ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3);
+        INSERT INTO room_types (name, description, base_price, max_guests, photo) VALUES
+        ('Singola Bagno Condiviso', 'Camera singola con TV, scrivania, armadio e bagno condiviso. 12 m²', 45.00, 1, 'singola-bagno-comune.jpg'),
+        ('Doppia/Twin Bagno Condiviso', 'Camera doppia o matrimoniale con TV, scrivania, balcone e bagno condiviso. 15 m²', 55.00, 2, 'doppia-standard.jpg'),
+        ('Singola Bagno Privato', 'Camera singola con aria condizionata, TV, bagno privato con bidet. 12 m²', 60.00, 1, 'singola-bagno-privato.png'),
+        ('Doppia Standard', 'Camera doppia con bagno privato, TV, balcone. 15 m²', 75.00, 2, 'doppia-standard.jpg'),
+        ('Tripla Standard', 'Camera triple con bagno privato, TV, balcone. 18 m²', 90.00, 3, 'tripla-standard.jpg');
       `);
     }
 
@@ -178,17 +182,17 @@ app.get('/api/room-types', async (req, res) => {
 // Room types admin - create
 app.post('/api/room-types', authenticateToken, async (req, res) => {
   try {
-    const { name, description, base_price, max_guests } = req.body;
+    const { name, description, base_price, max_guests, photo } = req.body;
 
     if (!name || base_price === undefined || base_price === null) {
       return res.status(400).json({ error: 'Name and base_price are required' });
     }
 
     const result = await pool.query(`
-      INSERT INTO room_types (name, description, base_price, max_guests)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO room_types (name, description, base_price, max_guests, photo)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [name, description || '', parseFloat(base_price), parseInt(max_guests, 10) || 1]);
+    `, [name, description || '', parseFloat(base_price), parseInt(max_guests, 10) || 1, photo || null]);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -200,18 +204,19 @@ app.post('/api/room-types', authenticateToken, async (req, res) => {
 app.put('/api/room-types/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, base_price, max_guests } = req.body;
+    const { name, description, base_price, max_guests, photo } = req.body;
 
     const result = await pool.query(`
       UPDATE room_types
-      SET name = $1, description = $2, base_price = $3, max_guests = $4
-      WHERE id = $5
+      SET name = $1, description = $2, base_price = $3, max_guests = $4, photo = $5
+      WHERE id = $6
       RETURNING *
     `, [
       name,
       description || '',
       parseFloat(base_price),
       parseInt(max_guests, 10) || 1,
+      photo || null,
       id
     ]);
 
@@ -470,6 +475,26 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
     }
     
     res.json({ message: 'Booking rejected' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel a confirmed booking (hotel or guest cancellation)
+app.post('/api/booking-requests/:id/cancel', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND status = $3 RETURNING *',
+      ['cancelled', id, 'confirmed']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Confirmed booking not found' });
+    }
+
+    res.json({ message: 'Booking cancelled' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
