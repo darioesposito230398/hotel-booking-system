@@ -314,7 +314,7 @@ function App() {
             <Route path="/prenota" element={
               PAYPAL_CLIENT_ID
                 ? (
-                  <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: 'EUR', intent: 'capture' }}>
+                  <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: 'EUR', intent: 'authorize' }}>
                     <BookingForm apiUrl={API_URL} />
                   </PayPalScriptProvider>
                 )

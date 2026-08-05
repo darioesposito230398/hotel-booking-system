@@ -13,10 +13,13 @@ const { body, validationResult } = require('express-validator');
 // Sconto promozionale applicato al cliente (10% sul prezzo pieno)
 const BOOKING_DISCOUNT = 0.10;
 
-// PayPal (acconto prima notte, pagato subito dal cliente)
+// PayPal — il cliente AUTORIZZA alla prenotazione, l'addebito avviene SOLO alla conferma.
+// Chi paga come ospite con sola carta (senza conto PayPal) viene addebitato subito da PayPal.
 const PAYPAL_BASE = process.env.PAYPAL_MODE === 'live'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
+
+const PAYPAL_CONFIRM_HOURS = parseInt(process.env.PAYPAL_CONFIRM_HOURS || '24', 10);
 
 let paypalTokenCache = null;
 let paypalTokenExpiry = 0;
@@ -56,7 +59,7 @@ async function paypalCreateOrder(amount) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      intent: 'CAPTURE',
+      intent: 'AUTHORIZE',
       purchase_units: [{
         amount: {
           currency_code: 'EUR',
@@ -72,9 +75,32 @@ async function paypalCreateOrder(amount) {
   return (await res.json()).id;
 }
 
-async function paypalCaptureOrder(orderId) {
+// Hold the amount (no charge). Returns the authorization id.
+async function paypalAuthorizeOrder(orderId) {
   const token = await paypalGetToken();
-  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders/${orderId}/capture`, {
+  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders/${orderId}/authorize`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal authorize: ${res.status} ${text}`);
+  }
+  const data = await res.json();
+  const auth = data?.purchase_units?.[0]?.payments?.authorizations?.[0];
+  if (!auth) {
+    throw new Error('Nessuna autorizzazione PayPal restituita');
+  }
+  return auth.id;
+}
+
+// Charge the held amount (on confirm). Returns capture id.
+async function paypalCaptureAuth(authId) {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/payments/authorizations/${authId}/capture`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -84,6 +110,41 @@ async function paypalCaptureOrder(orderId) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Errore PayPal capture: ${res.status} ${text}`);
+  }
+  const data = await res.json();
+  return data.id;
+}
+
+// Release the held amount (on reject / timeout).
+async function paypalVoidAuth(authId) {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/payments/authorizations/${authId}/void`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal void: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+// Refund a captured amount (on cancellation of a paid booking).
+async function paypalRefundCapture(captureId) {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/payments/captures/${captureId}/refund`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Errore PayPal refund: ${res.status} ${text}`);
   }
   return res.json();
 }
@@ -192,6 +253,8 @@ async function initDatabase() {
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS first_night_amount DECIMAL(10,2)');
     await client.query("ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'card'");
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_order_id VARCHAR(128)');
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_auth_id VARCHAR(128)');
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_capture_id VARCHAR(128)');
 
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
@@ -474,7 +537,7 @@ app.post('/api/paypal/create-order', async (req, res) => {
   }
 });
 
-// Create booking request (PayPal or bonifico)
+// Create booking request (PayPal o bonifico)
 app.post('/api/booking-requests', async (req, res) => {
   try {
     const {
@@ -507,25 +570,25 @@ app.post('/api/booking-requests', async (req, res) => {
       return res.status(201).json(result.rows[0]);
     }
 
-    // PayPal: cattura l'acconto (prima notte) che il cliente ha già approvato
+    // PayPal: AUTORIZZA (trattiene l'importo, NON addebita). L'addebito avviene alla conferma.
     if (!paypalOrderId) {
       return res.status(400).json({ error: 'paypalOrderId mancante' });
     }
-    await paypalCaptureOrder(paypalOrderId);
+    const authId = await paypalAuthorizeOrder(paypalOrderId);
 
     const result = await pool.query(`
       INSERT INTO booking_requests (
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
         total_price, first_night_amount, notes,
-        payment_method, payment_status, paypal_order_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        payment_method, payment_status, paypal_order_id, paypal_auth_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,
       checkIn, checkOut, roomTypeId, numGuests,
       discountedTotal, firstNightAmount, notes,
-      'paypal', 'captured', paypalOrderId
+      'paypal', 'authorized', paypalOrderId, authId
     ]);
 
     res.status(201).json(result.rows[0]);
@@ -605,7 +668,7 @@ app.put('/api/payment-config', authenticateToken, async (req, res) => {
 });
 
 // Confirm booking request
-// PayPal: l'acconto è già stato catturato al momento della prenotazione.
+// PayPal: la trattenuta viene ADDEBITATA solo adesso (capture). Il cliente non ha pagato prima.
 // Bonifico: l'amministratore verifica l'arrivo del pagamento e conferma.
 app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res) => {
   const client = await pool.connect();
@@ -642,7 +705,18 @@ app.post('/api/booking-requests/:id/confirm', authenticateToken, async (req, res
       return res.json({ message: 'Pagamento verificato e prenotazione confermata' });
     }
 
-    // PayPal (acconto già catturato) o qualsiasi altro metodo: basta confermare
+    // PayPal: addebita la prima notte ora (l'importo era solo trattenuto)
+    if (booking.payment_status === 'authorized' && booking.paypal_auth_id) {
+      const captureId = await paypalCaptureAuth(booking.paypal_auth_id);
+      await client.query(
+        'UPDATE booking_requests SET status = $1, payment_status = $2, paypal_capture_id = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+        ['confirmed', 'captured', captureId, id]
+      );
+      await client.query('COMMIT');
+      return res.json({ message: 'Acconto addebitato e prenotazione confermata' });
+    }
+
+    // Già addebitato o altro: basta confermare
     await client.query(
       'UPDATE booking_requests SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       ['confirmed', id]
@@ -672,8 +746,22 @@ app.post('/api/booking-requests/:id/reject', authenticateToken, async (req, res)
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking request not found or already processed' });
     }
+
+    // PayPal autorizzato: rilascia la trattenuta (nessun addebito avvenuto)
+    const booking = result.rows[0];
+    if (booking.payment_method === 'paypal' && booking.paypal_auth_id) {
+      try {
+        await paypalVoidAuth(booking.paypal_auth_id);
+        await pool.query(
+          'UPDATE booking_requests SET payment_status = $1 WHERE id = $2',
+          ['voided', id]
+        );
+      } catch (e) {
+        console.error('Errore rilascio trattenuta PayPal:', e.message);
+      }
+    }
     
-    res.json({ message: 'Booking rejected' });
+    res.json({ message: 'Prenotazione rifiutata' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -693,11 +781,62 @@ app.post('/api/booking-requests/:id/cancel', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Confirmed booking not found' });
     }
 
-    res.json({ message: 'Booking cancelled' });
+    // PayPal già addebitato: emette rimborso
+    const booking = result.rows[0];
+    if (booking.payment_method === 'paypal' && booking.paypal_capture_id) {
+      try {
+        await paypalRefundCapture(booking.paypal_capture_id);
+        await pool.query(
+          'UPDATE booking_requests SET payment_status = $1 WHERE id = $2',
+          ['refunded', id]
+        );
+      } catch (e) {
+        console.error('Errore rimborso PayPal:', e.message);
+      }
+    }
+
+    res.json({ message: 'Prenotazione cancellata' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Auto-reject pending bookings older than PAYPAL_CONFIRM_HOURS (default 24h)
+// and release any PayPal hold.
+async function autoRejectExpired() {
+  try {
+    const expired = await pool.query(
+      `SELECT * FROM booking_requests
+       WHERE status = 'pending'
+         AND created_at < NOW() - ($1 || ' hours')::interval`,
+      [PAYPAL_CONFIRM_HOURS]
+    );
+    for (const booking of expired.rows) {
+      if (booking.payment_method === 'paypal' && booking.paypal_auth_id) {
+        try {
+          await paypalVoidAuth(booking.paypal_auth_id);
+          await pool.query(
+            'UPDATE booking_requests SET status = $1, payment_status = $2 WHERE id = $3',
+            ['rejected', 'voided', booking.id]
+          );
+        } catch (e) {
+          console.error('Errore auto-rilascimento PayPal:', e.message);
+          await pool.query(
+            'UPDATE booking_requests SET status = $1 WHERE id = $2',
+            ['rejected', booking.id]
+          );
+        }
+      } else {
+        await pool.query(
+          'UPDATE booking_requests SET status = $1 WHERE id = $2',
+          ['rejected', booking.id]
+        );
+      }
+    }
+  } catch (e) {
+    console.error('Errore auto-rifiuto scaduti:', e.message);
+  }
+}
 
 // Start server
 initDatabase()
@@ -711,4 +850,8 @@ initDatabase()
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Job periodico: auto-rifiuto prenotazioni pending oltre le ore configurate
+    autoRejectExpired();
+    setInterval(autoRejectExpired, 15 * 60 * 1000);
   });
