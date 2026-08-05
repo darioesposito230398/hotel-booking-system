@@ -453,6 +453,13 @@ const AdminPanel = ({ apiUrl }) => {
         </button>
         <button
           type="button"
+          className={`admin-nav-btn ${section === 'pricing' ? 'active' : ''}`}
+          onClick={() => setSection('pricing')}
+        >
+          Tariffe giornaliere
+        </button>
+        <button
+          type="button"
           className={`admin-nav-btn ${section === 'rooms' ? 'active' : ''}`}
           onClick={() => setSection('rooms')}
         >
@@ -588,7 +595,7 @@ const AdminPanel = ({ apiUrl }) => {
       </div>
       )}
 
-      {section === 'rooms' && (
+      {section === 'pricing' && (
       <div className="pricing-manager">
         <div className="pricing-header">
           <h3>Tariffe giornaliere</h3>
