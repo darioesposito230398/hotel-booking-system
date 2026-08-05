@@ -898,6 +898,92 @@ h1, h2, h3, h4, h5, h6 {
   accent-color: var(--gold);
 }
 
+/* ---------- Rooms management (admin) ---------- */
+.rooms-manager {
+  margin: 2rem 0;
+  padding: 1.5rem 1.75rem;
+  background: white;
+  border: 1px solid var(--mist);
+  border-radius: 12px;
+}
+
+.rooms-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--mist);
+}
+
+.rooms-manager-header h3 {
+  color: var(--bay);
+}
+
+.rooms-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.room-edit {
+  background: var(--paper);
+  border: 1px solid var(--mist);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.room-edit.new {
+  border-style: dashed;
+  border-color: var(--gold);
+}
+
+.room-edit-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.room-edit input,
+.room-edit textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--mist);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.room-edit input:focus,
+.room-edit textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.room-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.room-edit-price-label {
+  margin-right: auto;
+  font-size: 0.75rem;
+  color: rgba(27, 36, 48, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.booking-list h3 {
+  color: var(--bay);
+  margin-bottom: 1rem;
+}
+
 /* ---------- Login ---------- */
 .login-form {
   max-width: 420px;
@@ -1070,6 +1156,10 @@ h1, h2, h3, h4, h5, h6 {
 
   .booking-card-actions {
     flex-direction: column;
+  }
+
+  .room-edit-grid {
+    grid-template-columns: 1fr;
   }
 
   .booking-card-actions .btn {

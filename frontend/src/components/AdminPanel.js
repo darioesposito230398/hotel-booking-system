@@ -3,9 +3,13 @@ import axios from 'axios';
 
 const AdminPanel = ({ apiUrl }) => {
   const [bookings, setBookings] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paymentConfig, setPaymentConfig] = useState('charge_on_confirm');
   const [error, setError] = useState('');
+  const [roomsDirty, setRoomsDirty] = useState({});
+  const [showNewRoom, setShowNewRoom] = useState(false);
+  const [newRoom, setNewRoom] = useState({ name: '', description: '', base_price: '', max_guests: 1 });
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -18,6 +22,16 @@ const AdminPanel = ({ apiUrl }) => {
     } catch (err) {
       setError('Errore nel caricamento delle prenotazioni');
       setLoading(false);
+    }
+  }, [apiUrl]);
+
+  const fetchRooms = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/room-types`);
+      setRooms(response.data);
+      setRoomsDirty({});
+    } catch (err) {
+      setError('Errore nel caricamento delle camere');
     }
   }, [apiUrl]);
 
@@ -35,8 +49,9 @@ const AdminPanel = ({ apiUrl }) => {
 
   useEffect(() => {
     fetchBookings();
+    fetchRooms();
     fetchPaymentConfig();
-  }, [fetchBookings, fetchPaymentConfig]);
+  }, [fetchBookings, fetchRooms, fetchPaymentConfig]);
 
   const updatePaymentConfig = async (newConfig) => {
     try {
@@ -48,6 +63,62 @@ const AdminPanel = ({ apiUrl }) => {
       setPaymentConfig(newConfig);
     } catch (err) {
       setError('Errore nell\'aggiornamento della configurazione');
+    }
+  };
+
+  const saveRoom = async (room) => {
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        name: room.name,
+        description: room.description,
+        base_price: parseFloat(room.base_price),
+        max_guests: parseInt(room.max_guests, 10) || 1
+      };
+      if (room.id) {
+        await axios.put(`${apiUrl}/room-types/${room.id}`, payload,
+          { headers: { Authorization: `Bearer ${token}` } });
+      }
+      await fetchRooms();
+      setError('');
+    } catch (err) {
+      setError('Errore nel salvataggio della camera');
+    }
+  };
+
+  const addNewRoom = async () => {
+    if (!newRoom.name || !newRoom.base_price) {
+      setError('Inserisci nome e prezzo della nuova camera');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${apiUrl}/room-types`, {
+        name: newRoom.name,
+        description: newRoom.description,
+        base_price: parseFloat(newRoom.base_price),
+        max_guests: parseInt(newRoom.max_guests, 10) || 1
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setShowNewRoom(false);
+      setNewRoom({ name: '', description: '', base_price: '', max_guests: 1 });
+      await fetchRooms();
+      setError('');
+    } catch (err) {
+      setError('Errore nella creazione della camera');
+    }
+  };
+
+  const deleteRoom = async (id) => {
+    if (window.confirm('Eliminare questa camera? ' +
+      'Eventuali prenotazioni associate verranno mantenute ma senza tipologia.')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`${apiUrl}/room-types/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } });
+        await fetchRooms();
+      } catch (err) {
+        setError('Errore nell\'eliminazione della camera');
+      }
     }
   };
 
@@ -99,6 +170,11 @@ const AdminPanel = ({ apiUrl }) => {
     });
   };
 
+  const setRoomField = (id, field, value) => {
+    setRooms(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setRoomsDirty(prev => ({ ...prev, [id]: true }));
+  };
+
   if (loading) {
     return (
       <div className="loading">
@@ -111,7 +187,7 @@ const AdminPanel = ({ apiUrl }) => {
     <div className="admin-panel">
       <div className="admin-header">
         <h2>Pannello Reception</h2>
-        <button onClick={fetchBookings} className="btn btn-secondary">
+        <button onClick={() => { fetchBookings(); fetchRooms(); }} className="btn btn-secondary">
           Aggiorna
         </button>
       </div>
@@ -156,14 +232,98 @@ const AdminPanel = ({ apiUrl }) => {
         </div>
       </div>
 
+      <div className="rooms-manager">
+        <div className="rooms-manager-header">
+          <h3>Gestione Camere e Prezzi</h3>
+          <button onClick={() => setShowNewRoom(!showNewRoom)} className="btn btn-gold">
+            {showNewRoom ? 'Annulla' : '+ Nuova camera'}
+          </button>
+        </div>
+
+        {showNewRoom && (
+          <div className="room-edit new">
+            <input
+              type="text"
+              placeholder="Nome camera (es. Quadrupla Standard)"
+              value={newRoom.name}
+              onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Prezzo notte €"
+              value={newRoom.base_price}
+              onChange={(e) => setNewRoom({ ...newRoom, base_price: e.target.value })}
+            />
+            <input
+              type="number"
+              min="1"
+              placeholder="Ospiti max"
+              value={newRoom.max_guests}
+              onChange={(e) => setNewRoom({ ...newRoom, max_guests: e.target.value })}
+            />
+            <textarea
+              placeholder="Descrizione"
+              value={newRoom.description}
+              onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })}
+            />
+            <button onClick={addNewRoom} className="btn btn-success">Crea</button>
+          </div>
+        )}
+
+        <div className="rooms-table">
+          {rooms.map(room => (
+            <div key={room.id} className="room-edit">
+              <div className="room-edit-grid">
+                <input
+                  type="text"
+                  value={room.name}
+                  onChange={(e) => setRoomField(room.id, 'name', e.target.value)}
+                />
+                <input
+                  type="number"
+                  step="1"
+                  value={room.base_price}
+                  onChange={(e) => setRoomField(room.id, 'base_price', e.target.value)}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={room.max_guests}
+                  onChange={(e) => setRoomField(room.id, 'max_guests', e.target.value)}
+                />
+              </div>
+              <textarea
+                rows="2"
+                value={room.description}
+                onChange={(e) => setRoomField(room.id, 'description', e.target.value)}
+              />
+              <div className="room-edit-actions">
+                <span className="room-edit-price-label">€ (prezzo notte)</span>
+                <button
+                  onClick={() => saveRoom(room)}
+                  className="btn btn-success"
+                  disabled={!roomsDirty[room.id]}
+                >
+                  Salva
+                </button>
+                <button onClick={() => deleteRoom(room.id)} className="btn btn-danger">
+                  Elimina
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="booking-list">
+        <h3>Richieste di prenotazione</h3>
         {bookings.length === 0 ? (
           <p>Nessuna richiesta di prenotazione trovata.</p>
         ) : (
           bookings.map(booking => (
             <div key={booking.id} className={`booking-card ${booking.status}`}>
               <div className="booking-card-header">
-                <h3>{booking.guest_name}</h3>
+                <h4>{booking.guest_name}</h4>
                 <span className={`booking-status ${booking.status}`}>
                   {booking.status === 'pending' ? 'In Attesa di Conferma' :
                    booking.status === 'confirmed' ? 'Confermata' : 'Rifiutata'}
