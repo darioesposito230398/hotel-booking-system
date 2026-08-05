@@ -30,18 +30,254 @@ function App() {
     setIsAuthenticated(false);
   };
 
+  const HomePage = () => (
+    <>
+      <section className="hero">
+        <div className="hero-text">
+          <span className="eyebrow">Via Milano 96 · Napoli Centro Storico</span>
+          <h1>Dormi nel cuore di Napoli.</h1>
+          <p className="lede">
+            Un albergo accogliente a 300 metri da Piazza Garibaldi, circondato dalle
+            pizzerie e dal rumore vero della città. La tua base per scoprire il golfo.
+          </p>
+          <p className="address-line">Check-in 13:00–19:00 &nbsp;·&nbsp; Check-out entro le 10:00</p>
+        </div>
+        <div className="hero-photo">
+          <figure className="postcard">
+            <img src="/images/golfo-napoli.jpg" alt="Golfo di Napoli" />
+            <figcaption className="postcard-caption">
+              <span>Cartolina dal golfo</span>
+              <span className="stamp">NAPOLI</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section className="info-strip">
+        <div className="info-item">
+          <div className="info-label">Posizione</div>
+          <div className="info-value">300 m da Piazza Garibaldi</div>
+        </div>
+        <div className="info-item">
+          <div className="info-label">Stazione</div>
+          <div className="info-value">Napoli Centrale a 7 minuti a piedi</div>
+        </div>
+        <div className="info-item">
+          <div className="info-label">Voto ospiti</div>
+          <div className="info-value">7,5 su 662 recensioni</div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head">
+          <span className="eyebrow">La città intorno</span>
+          <h2>Benvenuto a Napoli</h2>
+          <p>
+            Dalla tua finestra al mare: il golfo, Pompei e il castello più famoso
+            della città, a pochi passi o a un breve viaggio in treno.
+          </p>
+        </div>
+        <div className="postcard-grid">
+          <figure className="postcard">
+            <img src="/images/golfo-napoli.jpg" alt="Golfo di Napoli" />
+            <figcaption className="postcard-caption">
+              <span className="postcard-title">Golfo di Napoli</span>
+              <span className="stamp">01</span>
+            </figcaption>
+            <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
+              La veduta che ti accompagna al mattino, con il Vesuvio all'orizzonte.
+            </span>
+          </figure>
+          <figure className="postcard">
+            <img src="/images/pompei.jpg" alt="Pompei" />
+            <figcaption className="postcard-caption">
+              <span className="postcard-title">Pompei</span>
+              <span className="stamp">02</span>
+            </figcaption>
+            <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
+              A 25 minuti di treno, la città romana più visitata al mondo.
+            </span>
+          </figure>
+          <figure className="postcard">
+            <img src="/images/maschio-angioino.jpg" alt="Maschio Angioino" />
+            <figcaption className="postcard-caption">
+              <span className="postcard-title">Maschio Angioino</span>
+              <span className="stamp">03</span>
+            </figcaption>
+            <span className="postcard-note" style={{ padding: '0 0.25rem 0.8rem', display: 'block' }}>
+              Il castello aragonese che domina piazza Municipio.
+            </span>
+          </figure>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head center">
+          <span className="eyebrow">L'albergo</span>
+          <h2>Le nostre camere</h2>
+          <p>
+            Dalla singola con bagno condiviso alla tripla con balcone. Ogni camera
+            ha TV, scrivania e l'atmosfera del centro storico.
+          </p>
+        </div>
+        <div className="room-grid">
+          <article className="room-card">
+            <img src="/images/rooms/singola-bagno-comune.jpg" alt="Singola bagno condiviso" />
+            <div className="room-body">
+              <h4 className="room-name">Singola · Bagno condiviso</h4>
+              <p className="room-desc">TV, scrivania e armadio. Bagno condiviso al piano. 12 m².</p>
+              <div className="room-meta">
+                <span className="room-price">€45 <span className="per-night">/notte</span></span>
+                <span className="room-guests">1 ospite</span>
+              </div>
+            </div>
+          </article>
+          <article className="room-card">
+            <img src="/images/rooms/doppia-standard.jpg" alt="Doppia/Twin bagno condiviso" />
+            <div className="room-body">
+              <h4 className="room-name">Doppia · Bagno condiviso</h4>
+              <p className="room-desc">Letto matrimoniale o due letti, balcone e scrivania. 15 m².</p>
+              <div className="room-meta">
+                <span className="room-price">€55 <span className="per-night">/notte</span></span>
+                <span className="room-guests">2 ospiti</span>
+              </div>
+            </div>
+          </article>
+          <article className="room-card">
+            <img src="/images/rooms/singola-bagno-privato.png" alt="Singola bagno privato" />
+            <div className="room-body">
+              <h4 className="room-name">Singola · Bagno privato</h4>
+              <p className="room-desc">Aria condizionata, TV e bagno privato con bidet. 12 m².</p>
+              <div className="room-meta">
+                <span className="room-price">€60 <span className="per-night">/notte</span></span>
+                <span className="room-guests">1 ospite</span>
+              </div>
+            </div>
+          </article>
+          <article className="room-card">
+            <img src="/images/rooms/doppia-standard.jpg" alt="Doppia standard" />
+            <div className="room-body">
+              <h4 className="room-name">Doppia Standard</h4>
+              <p className="room-desc">Bagno privato, TV e balcone affacciato sulla via. 15 m².</p>
+              <div className="room-meta">
+                <span className="room-price">€75 <span className="per-night">/notte</span></span>
+                <span className="room-guests">2 ospiti</span>
+              </div>
+            </div>
+          </article>
+          <article className="room-card">
+            <img src="/images/rooms/tripla-standard.jpg" alt="Tripla standard" />
+            <div className="room-body">
+              <h4 className="room-name">Tripla Standard</h4>
+              <p className="room-desc">Perfetta per famiglie: matrimoniale più letto singolo. 18 m².</p>
+              <div className="room-meta">
+                <span className="room-price">€90 <span className="per-night">/notte</span></span>
+                <span className="room-guests">3 ospiti</span>
+              </div>
+            </div>
+          </article>
+          <article className="room-card" style={{ borderColor: 'var(--gold)' }}>
+            <div className="room-body" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <h4 className="room-name" style={{ fontSize: '1.3rem' }}>Il tuo soggiorno</h4>
+              <p className="room-desc">
+                Controlla le date e invia la richiesta: la reception conferma entro
+                poche ore. Nessun addebito prima della conferma.
+              </p>
+              <Link to="/prenota" className="btn btn-gold" style={{ marginTop: '0.5rem' }}>
+                Prenota ora
+              </Link>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head">
+          <span className="eyebrow">Servizi inclusi</span>
+          <h2>Quello che trovi da noi</h2>
+        </div>
+        <div className="services-list">
+          <div className="service-item">
+            <span className="service-num">01</span>
+            <div>
+              <h4>Wi-Fi gratuito</h4>
+              <p>Connessione in tutte le aree comuni</p>
+            </div>
+          </div>
+          <div className="service-item">
+            <span className="service-num">02</span>
+            <div>
+              <h4>Colazione in camera</h4>
+              <p>Su richiesta, ogni mattina</p>
+            </div>
+          </div>
+          <div className="service-item">
+            <span className="service-num">03</span>
+            <div>
+              <h4>Deposito bagagli</h4>
+              <p>Libero prima del check-in e dopo il check-out</p>
+            </div>
+          </div>
+          <div className="service-item">
+            <span className="service-num">04</span>
+            <div>
+              <h4>Pulizia giornaliera</h4>
+              <p>Camere e cambio biancheria</p>
+            </div>
+          </div>
+          <div className="service-item">
+            <span className="service-num">05</span>
+            <div>
+              <h4>Aria condizionata</h4>
+              <p>Nelle camere con bagno privato</p>
+            </div>
+          </div>
+          <div className="service-item">
+            <span className="service-num">06</span>
+            <div>
+              <h4>Check-in rapido</h4>
+              <p>Express check-in dalle 13:00</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head center">
+          <span className="eyebrow">Dove siamo</span>
+          <h2>Via Milano 96, Napoli</h2>
+          <p>
+            Nel cuore del centro storico, a 300 metri dalla stazione Piazza Garibaldi
+            e a pochi passi dalle strade più vive della città.
+          </p>
+        </div>
+        <div className="map-frame">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3019.5!2d14.268!3d40.852!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x133b085c7e7e7e7e%3A0x7e7e7e7e7e7e7e7e!2sVia+Milano%2C+96%2C+Napoli!5e0!3m2!1sit!2sit!4v1234567890"
+            width="100%"
+            height="420"
+            style={{ border: 0 }}
+            allowFullScreen=""
+            loading="lazy"
+            title="Posizione Hotel Vittorio Veneto"
+          ></iframe>
+        </div>
+      </section>
+    </>
+  );
+
   return (
     <Router>
       <div className="app">
         <header className="header">
-          <h1>Hotel Vittorio Veneto</h1>
+          <div className="brand">Hotel Vittorio Veneto <span className="brand-city">· Napoli</span></div>
           <nav>
             <Link to="/">Home</Link>
             <Link to="/prenota">Prenota</Link>
             {isAuthenticated ? (
               <>
-                <Link to="/admin">Pannello Reception</Link>
-                <button onClick={handleLogout} className="btn btn-secondary">
+                <Link to="/admin">Reception</Link>
+                <button onClick={handleLogout} className="btn btn-subtle" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
                   Esci
                 </button>
               </>
@@ -53,141 +289,19 @@ function App() {
 
         <main className="main-content">
           <Routes>
-          <Route path="/" element={
-            <>
-              <section className="hero">
-                <h1>Hotel Vittorio Veneto</h1>
-                <p>Nel cuore di Napoli, a soli 300m da Piazza Garibaldi. La tua casa nel capoluogo campano.</p>
-                <p className="subtitle">Via Milano, 96 - Centro Storico di Napoli</p>
-              </section>
-
-              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>Benvenuto a Napoli</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/golfo-napoli.jpg" alt="Golfo di Napoli" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Golfo di Napoli</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Vista panoramica sul golfo</p>
-                    </div>
-                  </div>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/pompei.jpg" alt="Pompei" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Pompei</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>A 25 minuti di treno</p>
-                    </div>
-                  </div>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/maschio-angioino.jpg" alt="Maschio Angioino" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Maschio Angioino</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Il castello aragonese di Napoli</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>L'Hotel</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/rooms/doppia-standard.jpg" alt="Camera Doppia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Camere Confortevoli</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>TV, aria condizionata, balcone</p>
-                    </div>
-                  </div>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/rooms/singola-bagno-privato.png" alt="Camera Singola" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Bagno Privato</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Bagni privati con doccia</p>
-                    </div>
-                  </div>
-                  <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '250px' }}>
-                    <img src="/images/rooms/tripla-standard.jpg" alt="Camera Tripla" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '1.5rem', color: 'white' }}>
-                      <h4 style={{ margin: 0 }}>Per Famiglie</h4>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>Camere triple per 3 ospiti</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '2rem' }}>I Nostri Servizi</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📶</div>
-                    <h4>Wi-Fi Gratuito</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Connessione Wi-Fi gratuita in tutte le aree comuni</p>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🅿️</div>
-                    <h4>Parcheggio</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Parcheggio privato nelle vicinanze</p>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☕</div>
-                    <h4>Colazione</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Colazione in camera disponibile</p>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❄️</div>
-                    <h4>Aria Condizionata</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Climatizzazione in tutte le camere</p>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧳</div>
-                    <h4>Deposito Bagagli</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Servizio deposito bagagli gratuito</p>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧹</div>
-                    <h4>Pulizia Giornaliera</h4>
-                    <p style={{ color: 'var(--text-light)' }}>Servizio di pulizia e cambio biancheria</p>
-                  </div>
-                </div>
-              </section>
-
-              <section style={{ background: 'white', padding: '3rem 2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ textAlign: 'center', color: 'var(--primary-color)', marginBottom: '1rem' }}>Dove Siamo</h2>
-                <p style={{ textAlign: 'center', color: 'var(--text-light)', marginBottom: '1.5rem' }}>Via Milano, 96 - Napoli (Centro Storico) - A 300m da Piazza Garibaldi</p>
-                <div style={{ maxWidth: '800px', margin: '0 auto', borderRadius: '8px', overflow: 'hidden' }}>
-                  <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3019.5!2d14.268!3d40.852!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x133b085c7e7e7e7e%3A0x7e7e7e7e7e7e7e7e!2sVia+Milano%2C+96%2C+Napoli!5e0!3m2!1sit!2sit!4v1234567890"
-                    width="100%" 
-                    height="400" 
-                    style={{ border: 0 }} 
-                    allowFullScreen="" 
-                    loading="lazy"
-                    title="Posizione Hotel Vittorio Veneto"
-                  ></iframe>
-                </div>
-              </section>
-
-              <section className="booking-form">
-                <h2>Prenota la Tua Camera</h2>
-                <p>Scegli la tipologia di camera che preferisci e compila il modulo per inviare la tua richiesta di prenotazione.</p>
-              </section>
-            </>
-          } />
-            
+            <Route path="/" element={<HomePage />} />
             <Route path="/prenota" element={
               <Elements stripe={stripePromise}>
                 <BookingForm apiUrl={API_URL} />
               </Elements>
             } />
-            
             <Route path="/login" element={
               isAuthenticated ? (
                 <Navigate to="/admin" />
               ) : (
-                <Login apiUrl={API_URL} onLogin={(token) => handleLogin(token)} />
+                <Login apiUrl={API_URL} onLogin={handleLogin} />
               )
             } />
-            
             <Route path="/admin" element={
               isAuthenticated ? (
                 <AdminPanel apiUrl={API_URL} />
@@ -198,14 +312,9 @@ function App() {
           </Routes>
         </main>
 
-        <footer style={{
-          background: 'var(--primary-color)',
-          color: 'white',
-          padding: '1.5rem',
-          textAlign: 'center',
-          marginTop: 'auto'
-        }}>
-          <p>&copy; 2026 Hotel Vittorio Veneto Napoli. Tutti i diritti riservati.</p>
+        <footer className="footer">
+          <div className="footer-brand">Hotel Vittorio Veneto</div>
+          <p>Via Milano 96, 80142 Napoli · &copy; 2026 · Tutti i diritti riservati</p>
         </footer>
       </div>
     </Router>

@@ -135,8 +135,13 @@ const BookingForm = ({ apiUrl }) => {
 
   return (
     <div className="booking-form">
-      <h2>Prenota la Tua Camera</h2>
-      
+      <span className="eyebrow">Richiesta di prenotazione</span>
+      <h2>Prenota la tua camera</h2>
+      <p className="form-intro">
+        Scegli le date e i dati della carta. Non ti addebitiamo nulla adesso: la
+        reception conferma prima, il pagamento avviene solo dopo la conferma.
+      </p>
+
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
@@ -185,15 +190,15 @@ const BookingForm = ({ apiUrl }) => {
           </div>
 
           {formData.roomTypeId && (
-            <div className="room-photo" style={{ margin: '1rem 0', textAlign: 'center' }}>
-              <img 
-                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)} 
+            <div className="room-preview">
+              <img
+                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)}
                 alt="Camera selezionata"
-                style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'cover' }}
               />
-              <p style={{ marginTop: '0.5rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>
-                {roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description}
-              </p>
+              <div className="room-preview-info">
+                <h4>{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name}</h4>
+                <p>{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description}</p>
+              </div>
             </div>
           )}
 
@@ -264,9 +269,14 @@ const BookingForm = ({ apiUrl }) => {
 
         {totalPrice > 0 && (
           <div className="price-display">
-            <div className="total-price">€{totalPrice.toFixed(2)}</div>
-            <div className="price-breakdown">
-              {nights} notte{nights !== 1 ? 'i' : ''} x €{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.base_price}
+            <div>
+              <div className="price-total">€{totalPrice.toFixed(2)}</div>
+              <div className="price-breakdown">
+                {nights} notte{nights !== 1 ? 'i' : ''} × €{roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.base_price}
+              </div>
+            </div>
+            <div className="price-avviso">
+              Nessun addebito ora. Il pagamento avviene solo dopo la conferma dell'hotel.
             </div>
           </div>
         )}
@@ -279,30 +289,30 @@ const BookingForm = ({ apiUrl }) => {
                 style: {
                   base: {
                     fontSize: '16px',
-                    color: '#424770',
+                    color: '#1b2430',
                     '::placeholder': {
                       color: '#aab7c4',
                     },
                   },
                   invalid: {
-                    color: '#9e2146',
+                    color: '#b03a2e',
                   },
                 },
               }}
             />
           </div>
-          <small style={{ color: 'var(--text-light)', marginTop: '0.5rem', display: 'block' }}>
+          <small className="stripe-note">
             I tuoi dati sono al sicuro. La carta viene tokenizzata e non salvata sul nostro server.
           </small>
         </div>
 
-        <button 
-          type="submit" 
-          className="btn btn-primary" 
+        <button
+          type="submit"
+          className="btn btn-primary btn-block"
           disabled={!stripe || loading}
-          style={{ width: '100%', marginTop: '1rem' }}
+          style={{ marginTop: '1.25rem' }}
         >
-          {loading ? 'Elaborazione in corso...' : 'Invia Richiesta di Prenotazione'}
+          {loading ? 'Elaborazione in corso...' : 'Invia richiesta di prenotazione'}
         </button>
       </form>
     </div>
