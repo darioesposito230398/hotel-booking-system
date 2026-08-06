@@ -997,6 +997,12 @@ app.post('/api/booking-requests/:id/cancel', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Confirmed booking not found' });
     }
 
+    // On cancel, remove the ID document from the database (privacy)
+    await pool.query(
+      'UPDATE booking_requests SET id_document = NULL WHERE id = $1',
+      [id]
+    );
+
     // PayPal già addebitato: emette rimborso
     const booking = result.rows[0];
     if (booking.payment_method === 'paypal' && booking.paypal_capture_id) {

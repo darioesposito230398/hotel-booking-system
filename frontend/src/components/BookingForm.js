@@ -52,6 +52,11 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
       formData.guestName && formData.guestEmail && formData.confirmEmail &&
       formData.guestPhone && formData.numGuests && idDocument);
 
+  const isQuoteReady = () =>
+    Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
+      formData.guestName && formData.guestEmail && formData.confirmEmail &&
+      formData.guestPhone && formData.numGuests);
+
   useEffect(() => {
     const fetchRoomTypes = async () => {
       try {
@@ -77,7 +82,6 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     if (!formData.confirmEmail) missing.push('conferma email');
     if (!formData.guestPhone) missing.push('telefono');
     if (!formData.numGuests) missing.push('numero ospiti');
-    if (!idDocument) missing.push('documento d\'identità');
     if (missing.length > 0) {
       setError(`Compila i campi obbligatori prima di calcolare il preventivo: ${missing.join(', ')}.`);
       return;
@@ -358,23 +362,6 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="idDocument">{t('label.idDocument')} <span className="required-star">*</span></label>
-            <input
-              type="file"
-              id="idDocument"
-              name="idDocument"
-              accept="image/*,.pdf"
-              onChange={handleIdDocument}
-              required
-            />
-            {idDocumentName ? (
-              <small className="stripe-note">{t('idDocument.uploaded')}: {idDocumentName}</small>
-            ) : (
-              <small className="stripe-note">{t('idDocument.hint')}</small>
-            )}
-          </div>
-
-          <div className="form-group">
             <label htmlFor="note">{t('label.notes')}</label>
             <textarea
               id="notes"
@@ -390,12 +377,12 @@ if (success) {
           type="button"
           className="btn btn-gold btn-block"
           onClick={calculateQuote}
-          disabled={!isFormComplete()}
+          disabled={!isQuoteReady()}
           style={{ marginTop: '0.5rem' }}
         >
           {t('booking.quote')}
         </button>
-        {!isFormComplete() && (
+        {!isQuoteReady() && (
           <p className="form-required-hint">{t('booking.requiredHint')}</p>
         )}
 
@@ -418,6 +405,23 @@ if (success) {
             <div className="price-avviso">{t('price.nocharge')}</div>
           </div>
         )}
+
+        <div className="form-group" style={{ marginTop: '1.25rem' }}>
+          <label htmlFor="idDocument">{t('label.idDocument')} <span className="required-star">*</span></label>
+          <input
+            type="file"
+            id="idDocument"
+            name="idDocument"
+            accept="image/*,.pdf"
+            onChange={handleIdDocument}
+            required
+          />
+          {idDocumentName ? (
+            <small className="stripe-note">{t('idDocument.uploaded')}: {idDocumentName}</small>
+          ) : (
+            <small className="stripe-note">{t('idDocument.hint')}</small>
+          )}
+        </div>
 
         <div className="payment-method">
           <label className="payment-option">

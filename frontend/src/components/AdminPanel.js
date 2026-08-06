@@ -846,7 +846,7 @@ const AdminPanel = ({ apiUrl }) => {
                   </div>
                 </div>
 
-                {booking.id_document && (
+                {booking.id_document && booking.status !== 'cancelled' && (
                   <div className="detail-item" style={{ marginTop: '0.75rem' }}>
                     <span className="detail-label">Documento d'identità</span>
                     <button
