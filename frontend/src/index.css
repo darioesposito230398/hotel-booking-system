@@ -573,6 +573,18 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0.45rem;
 }
 
+.required-star {
+  color: #c0392b;
+  font-size: 0.9rem;
+}
+
+.form-required-hint {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: #8a6d3b;
+  line-height: 1.5;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -1497,6 +1509,49 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .booking-card-actions .btn {
+    width: 100%;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    font-size: 16px;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .form-group label {
+    font-size: 0.74rem;
+  }
+
+  .btn-block,
+  .booking-form .btn {
+    width: 100%;
+  }
+
+  .admin-nav {
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: stretch;
+  }
+
+  .admin-nav-btn {
+    text-align: center;
+  }
+
+  .pricing-controls,
+  .pricing-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pricing-range input,
+  .pricing-controls select {
+    width: 100%;
+  }
+
+  .rooms-table .room-edit input,
+  .rooms-table .room-edit textarea {
     width: 100%;
   }
 }

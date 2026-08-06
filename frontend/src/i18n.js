@@ -87,6 +87,7 @@ const translations = {
 
     'booking.eyebrow': 'Richiesta di prenotazione',
     'booking.quote': 'Calcola preventivo',
+    'booking.requiredHint': 'Compila i campi obbligatori (*) per calcolare il preventivo.',
     'booking.completeFields': 'Completa tutti i campi (date, camera, nome, email e documento) per procedere.',
     'label.idDocument': 'Documento d\'identità (foto o PDF)',
     'idDocument.uploaded': 'Caricato',
@@ -103,6 +104,7 @@ const translations = {
     'label.guests': 'Numero Ospiti',
     'label.name': 'Nome e Cognome',
     'label.email': 'Email',
+    'label.confirmEmail': 'Conferma email',
     'label.phone': 'Telefono',
     'label.notes': 'Note o Richieste Speciali',
     'label.card': 'Dati Carta di Credito',
@@ -231,6 +233,7 @@ const translations = {
 
     'booking.eyebrow': 'Booking request',
     'booking.quote': 'Get a quote',
+    'booking.requiredHint': 'Fill in the required fields (*) to get a quote.',
     'booking.completeFields': 'Complete all fields (dates, room, name, email and ID document) to proceed.',
     'label.idDocument': 'ID document (photo or PDF)',
     'idDocument.uploaded': 'Uploaded',
@@ -247,6 +250,7 @@ const translations = {
     'label.guests': 'Number of guests',
     'label.name': 'Full name',
     'label.email': 'Email',
+    'label.confirmEmail': 'Confirm email',
     'label.phone': 'Phone',
     'label.notes': 'Notes or special requests',
     'label.card': 'Card details',

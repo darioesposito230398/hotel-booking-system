@@ -10,6 +10,7 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   const [formData, setFormData] = useState({
     guestName: '',
     guestEmail: '',
+    confirmEmail: '',
     guestPhone: '',
     checkIn: '',
     checkOut: '',
@@ -48,8 +49,8 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
 
   const isFormComplete = () =>
     Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
-      formData.guestName && formData.guestEmail && formData.guestPhone &&
-      formData.numGuests && idDocument);
+      formData.guestName && formData.guestEmail && formData.confirmEmail &&
+      formData.guestPhone && formData.numGuests && idDocument);
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
@@ -67,8 +68,22 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   }, [apiUrl]);
 
   const calculateQuote = async () => {
-    if (!formData.checkIn || !formData.checkOut || !formData.roomTypeId) {
-      setError('Inserisci le date e la tipologia di camera');
+    const missing = [];
+    if (!formData.checkIn) missing.push('data di check-in');
+    if (!formData.checkOut) missing.push('data di check-out');
+    if (!formData.roomTypeId) missing.push('tipologia di camera');
+    if (!formData.guestName) missing.push('nome e cognome');
+    if (!formData.guestEmail) missing.push('email');
+    if (!formData.confirmEmail) missing.push('conferma email');
+    if (!formData.guestPhone) missing.push('telefono');
+    if (!formData.numGuests) missing.push('numero ospiti');
+    if (!idDocument) missing.push('documento d\'identità');
+    if (missing.length > 0) {
+      setError(`Compila i campi obbligatori prima di calcolare il preventivo: ${missing.join(', ')}.`);
+      return;
+    }
+    if (formData.confirmEmail !== formData.guestEmail) {
+      setError('Le email non coincidono.');
       return;
     }
     setError('');
@@ -116,6 +131,8 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     if (!formData.guestName) missing.push('nome e cognome');
     if (!formData.guestEmail) missing.push('email');
     else if (!/\S+@\S+\.\S+/.test(formData.guestEmail)) return 'L\'email inserita non è valida.';
+    if (!formData.confirmEmail) missing.push('conferma email');
+    else if (formData.confirmEmail !== formData.guestEmail) return 'Le email non coincidono.';
     if (!formData.guestPhone) missing.push('telefono');
     if (!formData.checkIn) missing.push('data di check-in');
     if (!formData.checkOut) missing.push('data di check-out');
@@ -215,7 +232,7 @@ if (success) {
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-group">
-            <label htmlFor="checkIn">{t('label.checkin')}</label>
+            <label htmlFor="checkIn">{t('label.checkin')} <span className="required-star">*</span></label>
             <input
               type="date"
               id="checkIn"
@@ -228,7 +245,7 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="checkOut">{t('label.checkout')}</label>
+            <label htmlFor="checkOut">{t('label.checkout')} <span className="required-star">*</span></label>
             <input
               type="date"
               id="checkOut"
@@ -241,7 +258,7 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="roomTypeId">{t('label.roomtype')}</label>
+            <label htmlFor="roomTypeId">{t('label.roomtype')} <span className="required-star">*</span></label>
             <select
               id="roomTypeId"
               name="roomTypeId"
@@ -274,7 +291,7 @@ if (success) {
           )}
 
           <div className="form-group">
-            <label htmlFor="numGuests">{t('label.guests')}</label>
+            <label htmlFor="numGuests">{t('label.guests')} <span className="required-star">*</span></label>
             <select
               id="numGuests"
               name="numGuests"
@@ -289,7 +306,7 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestName">{t('label.name')}</label>
+            <label htmlFor="guestName">{t('label.name')} <span className="required-star">*</span></label>
             <input
               type="text"
               id="guestName"
@@ -302,7 +319,7 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestEmail">{t('label.email')}</label>
+            <label htmlFor="guestEmail">{t('label.email')} <span className="required-star">*</span></label>
             <input
               type="email"
               id="guestEmail"
@@ -315,7 +332,20 @@ if (success) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="guestPhone">{t('label.phone')}</label>
+            <label htmlFor="confirmEmail">{t('label.confirmEmail')} <span className="required-star">*</span></label>
+            <input
+              type="email"
+              id="confirmEmail"
+              name="confirmEmail"
+              value={formData.confirmEmail}
+              onChange={handleInputChange}
+              placeholder="mario@email.com"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="guestPhone">{t('label.phone')} <span className="required-star">*</span></label>
             <input
               type="tel"
               id="guestPhone"
@@ -323,11 +353,12 @@ if (success) {
               value={formData.guestPhone}
               onChange={handleInputChange}
               placeholder="+39 123 456 7890"
+              required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="idDocument">{t('label.idDocument')}</label>
+            <label htmlFor="idDocument">{t('label.idDocument')} <span className="required-star">*</span></label>
             <input
               type="file"
               id="idDocument"
@@ -359,10 +390,14 @@ if (success) {
           type="button"
           className="btn btn-gold btn-block"
           onClick={calculateQuote}
+          disabled={!isFormComplete()}
           style={{ marginTop: '0.5rem' }}
         >
           {t('booking.quote')}
         </button>
+        {!isFormComplete() && (
+          <p className="form-required-hint">{t('booking.requiredHint')}</p>
+        )}
 
         {hasQuote && totalPrice > 0 && (
           <div className="price-display">
