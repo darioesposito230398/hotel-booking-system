@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import axios from 'axios';
 import { useLanguage } from '../i18n';
+import RoomGallery from './RoomGallery';
 
 const BookingForm = ({ apiUrl, paypalClientId }) => {
   const { t, roomName, roomDesc } = useLanguage();
@@ -125,6 +126,14 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
       'Tripla Standard': '/images/rooms/tripla-standard.jpg'
     };
     return photoMap[room?.name] || '/images/rooms/doppia-standard.jpg';
+  };
+
+  const getRoomPhotos = (room) => {
+    if (room?.photos?.length > 0) {
+      return room.photos.map(p => p.data);
+    }
+    const fallback = getRoomPhoto(room);
+    return fallback ? [fallback] : [];
   };
 
   const handleInputChange = (e) => {
@@ -281,21 +290,18 @@ if (success) {
             </select>
           </div>
 
-          {formData.roomTypeId && (
+          {formData.roomTypeId && (() => {
+            const room = roomTypes.find(r => r.id === parseInt(formData.roomTypeId));
+            return (
             <div className="room-preview">
-              <img
-                src={getRoomPhoto(roomTypes.find(r => r.id === parseInt(formData.roomTypeId)))}
-                alt="Camera selezionata"
-              />
+              <RoomGallery photos={getRoomPhotos(room)} name={roomName(room?.name)} />
               <div className="room-preview-info">
-                <h4>{roomName(roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name)}</h4>
-                <p>{roomDesc(
-                  roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.description,
-                  roomTypes.find(r => r.id === parseInt(formData.roomTypeId))?.name
-                )}</p>
+                <h4>{roomName(room?.name)}</h4>
+                <p>{roomDesc(room?.description, room?.name)}</p>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           <div className="form-group">
             <label htmlFor="numGuests">{t('label.guests')} <span className="required-star">*</span></label>

@@ -10,6 +10,8 @@ if (process.env.STRIPE_SECRET_KEY) {
   stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 }
 const { body, validationResult } = require('express-validator');
+const fs = require('fs');
+const path = require('path');
 
 // Sconto promozionale applicato al cliente (10% sul prezzo pieno)
 const BOOKING_DISCOUNT = 0.10;
@@ -440,6 +442,67 @@ async function initDatabase() {
     console.log('Database initialized successfully');
   } finally {
     client.release();
+  }
+}
+
+// Seed foto esistenti: carica nella tabella room_photos le immagini legacy
+// (frontend/public/images/rooms) per ogni tipologia, una sola volta.
+async function seedRoomPhotos() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS app_meta (
+        meta_key VARCHAR(100) PRIMARY KEY,
+        meta_value TEXT
+      )
+    `);
+    const seeded = await client.query(
+      `SELECT meta_value FROM app_meta WHERE meta_key = 'room_photos_seeded'`
+    );
+    if (seeded.rows.length > 0) return;
+
+    const rooms = await client.query(`
+      SELECT id, photo FROM room_types
+      WHERE photo IS NOT NULL AND photo != ''
+      ORDER BY id
+    `);
+    for (const room of rooms.rows) {
+      const dataUrl = await loadPhotoAsDataUrl(room.photo);
+      if (!dataUrl) {
+        console.log(`[PHOTOS] Impossibile caricare "${room.photo}"`);
+        continue;
+      }
+      await client.query(
+        'INSERT INTO room_photos (room_type_id, data, position) VALUES ($1, $2, 0)',
+        [room.id, dataUrl]
+      );
+      console.log(`[PHOTOS] Foto seed per tipologia ${room.id}: ${room.photo}`);
+    }
+    await client.query(`
+      INSERT INTO app_meta (meta_key, meta_value) VALUES ('room_photos_seeded', '1')
+      ON CONFLICT (meta_key) DO NOTHING
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+async function loadPhotoAsDataUrl(filename) {
+  const mime = String(filename).toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+  const localPath = path.join(__dirname, '..', 'frontend', 'public', 'images', 'rooms', filename);
+  try {
+    const data = fs.readFileSync(localPath);
+    return `data:${mime};base64,${data.toString('base64')}`;
+  } catch (err) {
+    try {
+      const base = process.env.FRONTEND_URL || 'https://hotel-booking-system-dar15.vercel.app';
+      const res = await fetch(`${base}/images/rooms/${filename}`);
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    } catch (err2) {
+      return null;
+    }
   }
 }
 
@@ -1128,8 +1191,13 @@ async function autoRejectExpired() {
 
 // Start server
 initDatabase()
-  .then(() => {
+  .then(async () => {
     console.log('Database initialized');
+    try {
+      await seedRoomPhotos();
+    } catch (e) {
+      console.error('Errore seed foto camere:', e.message);
+    }
   })
   .catch((err) => {
     console.error('Database init error:', err.message);

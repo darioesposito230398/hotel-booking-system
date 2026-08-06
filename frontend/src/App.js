@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
+import axios from 'axios';
 import BookingForm from './components/BookingForm';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
+import RoomGallery from './components/RoomGallery';
 import { LanguageProvider, useLanguage } from './i18n';
 import './App.css';
 
@@ -12,12 +14,16 @@ const PAYPAL_CLIENT_ID = process.env.REACT_APP_PAYPAL_CLIENT_ID || '';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [rooms, setRooms] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
     }
+    axios.get(`${API_URL}/room-types`)
+      .then(res => setRooms(res.data))
+      .catch(() => {});
   }, []);
 
   const handleLogin = (token) => {
@@ -30,7 +36,24 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  const { t, lang, setLang, roomName } = useLanguage();
+  const { t, lang, setLang, roomName, roomDesc } = useLanguage();
+
+  const getRoomPhotos = (room) => {
+    if (room?.photos?.length > 0) {
+      return room.photos.map(p => p.data);
+    }
+    if (room?.photo) {
+      return [`/images/rooms/${room.photo}`];
+    }
+    const photoMap = {
+      'Singola Bagno Condiviso': '/images/rooms/singola-bagno-comune.jpg',
+      'Singola Bagno Privato': '/images/rooms/singola-bagno-privato.png',
+      'Doppia Standard': '/images/rooms/doppia-standard.jpg',
+      'Doppia/Twin Bagno Condiviso': '/images/rooms/doppia-standard.jpg',
+      'Tripla Standard': '/images/rooms/tripla-standard.jpg'
+    };
+    return [photoMap[room?.name] || '/images/rooms/doppia-standard.jpg'];
+  };
 
   const HomePage = () => (
     <>
@@ -132,61 +155,19 @@ function App() {
           <p>{t('rooms.p')}</p>
         </div>
         <div className="room-grid">
-          <article className="room-card">
-            <img src="/images/rooms/singola-bagno-comune.jpg" alt="Singola bagno condiviso" />
-            <div className="room-body">
-              <h4 className="room-name">{roomName('Singola Bagno Condiviso')}</h4>
-              <p className="room-desc">{t('desc.singola.shared')}</p>
-              <div className="room-meta">
-                <span className="room-price direct">{t('rooms.directBadge')}</span>
-                <span className="room-guests">{t('rooms.guest.1')}</span>
+          {rooms.map(room => (
+            <article className="room-card" key={room.id}>
+              <RoomGallery photos={getRoomPhotos(room)} name={roomName(room.name)} />
+              <div className="room-body">
+                <h4 className="room-name">{roomName(room.name)}</h4>
+                <p className="room-desc">{roomDesc(room.description, room.name)}</p>
+                <div className="room-meta">
+                  <span className="room-price direct">{t('rooms.directBadge')}</span>
+                  <span className="room-guests">{room.max_guests} {room.max_guests <= 1 ? t('rooms.guest.1') : room.max_guests === 2 ? t('rooms.guest.2') : t('rooms.guest.3')}</span>
+                </div>
               </div>
-            </div>
-          </article>
-          <article className="room-card">
-            <img src="/images/rooms/doppia-standard.jpg" alt="Doppia/Twin bagno condiviso" />
-            <div className="room-body">
-              <h4 className="room-name">{roomName('Doppia/Twin Bagno Condiviso')}</h4>
-              <p className="room-desc">{t('desc.twinshared')}</p>
-              <div className="room-meta">
-                <span className="room-price direct">{t('rooms.directBadge')}</span>
-                <span className="room-guests">{t('rooms.guest.2')}</span>
-              </div>
-            </div>
-          </article>
-          <article className="room-card">
-            <img src="/images/rooms/singola-bagno-privato.png" alt="Singola bagno privato" />
-            <div className="room-body">
-              <h4 className="room-name">{roomName('Singola Bagno Privato')}</h4>
-              <p className="room-desc">{t('desc.singola.priv')}</p>
-              <div className="room-meta">
-                <span className="room-price direct">{t('rooms.directBadge')}</span>
-                <span className="room-guests">{t('rooms.guest.1')}</span>
-              </div>
-            </div>
-          </article>
-          <article className="room-card">
-            <img src="/images/rooms/doppia-standard.jpg" alt="Doppia standard" />
-            <div className="room-body">
-              <h4 className="room-name">{roomName('Doppia Standard')}</h4>
-              <p className="room-desc">{t('desc.doppia')}</p>
-              <div className="room-meta">
-                <span className="room-price direct">{t('rooms.directBadge')}</span>
-                <span className="room-guests">{t('rooms.guest.2')}</span>
-              </div>
-            </div>
-          </article>
-          <article className="room-card">
-            <img src="/images/rooms/tripla-standard.jpg" alt="Tripla standard" />
-            <div className="room-body">
-              <h4 className="room-name">{roomName('Tripla Standard')}</h4>
-              <p className="room-desc">{t('desc.tripla')}</p>
-              <div className="room-meta">
-                <span className="room-price direct">{t('rooms.directBadge')}</span>
-                <span className="room-guests">{t('rooms.guest.3')}</span>
-              </div>
-            </div>
-          </article>
+            </article>
+          ))}
           <article className="room-card" style={{ borderColor: 'var(--gold)' }}>
             <div className="room-body" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
               <h4 className="room-name" style={{ fontSize: '1.3rem' }}>{t('rooms.booking.title')}</h4>
