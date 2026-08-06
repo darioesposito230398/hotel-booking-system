@@ -461,10 +461,17 @@ async function seedRoomPhotos() {
     // Rimuove il vecchio flag globale (il primo seed è fallito, va ritentato)
     await client.query(`DELETE FROM app_meta WHERE meta_key = 'room_photos_seeded'`);
 
+    // Mappa nome camera -> immagine legacy (usata anche in home)
+    const ROOM_PHOTO_MAP = {
+      'Singola Bagno Condiviso': 'singola-bagno-comune.jpg',
+      'Singola Bagno Privato': 'singola-bagno-privato.png',
+      'Doppia Standard': 'doppia-standard.jpg',
+      'Doppia/Twin Bagno Condiviso': 'doppia-standard.jpg',
+      'Tripla Standard': 'tripla-standard.jpg'
+    };
+
     const rooms = await client.query(`
-      SELECT id, photo FROM room_types
-      WHERE photo IS NOT NULL AND photo != ''
-      ORDER BY id
+      SELECT id, name, photo FROM room_types ORDER BY id
     `);
     for (const room of rooms.rows) {
       const seededKey = `photo_seed_${room.id}`;
@@ -486,9 +493,12 @@ async function seedRoomPhotos() {
         continue;
       }
 
-      const dataUrl = loadPhotoAsDataUrl(room.photo);
+      const filename = room.photo || ROOM_PHOTO_MAP[room.name];
+      if (!filename) continue;
+
+      const dataUrl = loadPhotoAsDataUrl(filename);
       if (!dataUrl) {
-        console.log(`[PHOTOS] Impossibile caricare "${room.photo}"`);
+        console.log(`[PHOTOS] Impossibile caricare "${filename}"`);
         continue;
       }
       await client.query(
@@ -499,7 +509,7 @@ async function seedRoomPhotos() {
         'INSERT INTO app_meta (meta_key, meta_value) VALUES ($1, $2) ON CONFLICT (meta_key) DO NOTHING',
         [seededKey, '1']
       );
-      console.log(`[PHOTOS] Foto seed per tipologia ${room.id}: ${room.photo}`);
+      console.log(`[PHOTOS] Foto seed per tipologia ${room.id}: ${filename}`);
     }
   } finally {
     client.release();
