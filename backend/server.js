@@ -206,7 +206,7 @@ function bookingHtml(booking) {
     ['Acconto prima notte', booking.first_night_amount ? fmtMoney(booking.first_night_amount) : '—'],
     ['Saldo in struttura', balance > 0 ? fmtMoney(balance) : '—'],
     ['Metodo di pagamento', method],
-    ['Riferimento prenotazione', '#' + booking.id]
+    ['Riferimento prenotazione', booking.booking_number ? `N. ${booking.booking_number}` : '#' + booking.id]
   ];
   if (booking.notes) rows.push(['Note del cliente', booking.notes]);
 
@@ -247,7 +247,7 @@ async function sendIbanEmail(booking) {
       <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>A favore di</strong></td><td style="padding:8px 12px;border:1px solid #eee">${info.bonifico_intestatario || '—'}</td></tr>
       <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>IBAN</strong></td><td style="padding:8px 12px;border:1px solid #eee;font-size:16px;letter-spacing:1px">${info.bonifico_iban || 'I dati bancari verranno inviati a breve.'}</td></tr>
       <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>Importo da versare</strong></td><td style="padding:8px 12px;border:1px solid #eee">${fmtMoney(booking.first_night_amount)}</td></tr>
-      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>Riferimento</strong></td><td style="padding:8px 12px;border:1px solid #eee">Prenotazione #${booking.id}</td></tr>
+      <tr><td style="padding:8px 12px;border:1px solid #eee"><strong>Riferimento</strong></td><td style="padding:8px 12px;border:1px solid #eee">Prenotazione ${booking.booking_number ? `N. ${booking.booking_number}` : '#' + booking.id}</td></tr>
     </table>
     <p>Una volta ricevuto il pagamento, confermeremo definitivamente la prenotazione.</p>
     ${bookingHtml(booking)}
@@ -323,6 +323,7 @@ async function initDatabase() {
 
       CREATE TABLE IF NOT EXISTS booking_requests (
         id SERIAL PRIMARY KEY,
+        booking_number BIGINT UNIQUE,
         guest_name VARCHAR(255) NOT NULL,
         guest_email VARCHAR(255) NOT NULL,
         guest_phone VARCHAR(50),
@@ -380,6 +381,29 @@ async function initDatabase() {
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_order_id VARCHAR(128)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_auth_id VARCHAR(128)');
     await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS paypal_capture_id VARCHAR(128)');
+    await client.query('ALTER TABLE booking_requests ADD COLUMN IF NOT EXISTS booking_number BIGINT');
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_booking_number ON booking_requests(booking_number)
+    `);
+
+    // Progressive booking numbers: 9610001, 9610002, ...
+    await client.query(`
+      CREATE SEQUENCE IF NOT EXISTS booking_number_seq START WITH 9610001 INCREMENT BY 1
+    `);
+    await client.query(`
+      SELECT setval('booking_number_seq',
+        GREATEST(
+          (SELECT COALESCE(MAX(booking_number), 9610000) FROM booking_requests),
+          9610001
+        )
+      )
+    `);
+    // Assign numbers to any existing bookings still missing one
+    await client.query(`
+      UPDATE booking_requests
+      SET booking_number = nextval('booking_number_seq')
+      WHERE booking_number IS NULL
+    `);
 
     // Seed room types only if none exist (so admin edits persist across restarts)
     const existingRooms = await client.query('SELECT COUNT(*) AS count FROM room_types');
@@ -716,8 +740,8 @@ app.post('/api/booking-requests', async (req, res) => {
           guest_name, guest_email, guest_phone,
           check_in, check_out, room_type_id, num_guests,
           total_price, first_night_amount, id_document, notes,
-          payment_method, payment_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          payment_method, payment_status, booking_number
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, nextval('booking_number_seq'))
         RETURNING *
       `, [
         guestName, guestEmail, guestPhone,
@@ -748,8 +772,8 @@ app.post('/api/booking-requests', async (req, res) => {
         guest_name, guest_email, guest_phone,
         check_in, check_out, room_type_id, num_guests,
         total_price, first_night_amount, id_document, notes,
-        payment_method, payment_status, paypal_order_id, paypal_auth_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        payment_method, payment_status, paypal_order_id, paypal_auth_id, booking_number
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, nextval('booking_number_seq'))
       RETURNING *
     `, [
       guestName, guestEmail, guestPhone,

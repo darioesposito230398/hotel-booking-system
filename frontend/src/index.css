@@ -915,6 +915,21 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.1rem;
 }
 
+.booking-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.booking-number {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
 .booking-status {
   padding: 0.25rem 0.8rem;
   border-radius: 20px;

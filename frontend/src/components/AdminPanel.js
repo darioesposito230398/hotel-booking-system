@@ -328,6 +328,67 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
+  const handlePrint = (booking) => {
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (!w) {
+      alert('Consenti i popup per stampare.');
+      return;
+    }
+    const euro = n => '€' + (parseFloat(n) || 0).toFixed(2);
+    const balance = booking.first_night_amount
+      ? (parseFloat(booking.total_price) - parseFloat(booking.first_night_amount)).toFixed(2)
+      : null;
+    const method = booking.payment_method === 'bonifico' ? 'Bonifico istantaneo' : 'PayPal';
+    const st = statusLabel(booking.status);
+    const nights = Math.max(0, Math.round((new Date(booking.check_out) - new Date(booking.check_in)) / 86400000));
+
+    w.document.write(`<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<title>Prenotazione ${booking.booking_number || booking.id} - Hotel Vittorio Veneto</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1b2430; margin: 2.2cm; }
+  h1 { color: #0d3b2e; font-size: 22px; margin: 0; }
+  .sub { color: #55606e; margin: 2px 0 20px; font-size: 13px; }
+  .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #ddd; font-size: 14px; }
+  .row strong { width: 45%; }
+  h2 { color: #0d3b2e; font-size: 15px; margin: 22px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .footer { margin-top: 34px; font-size: 12px; color: #55606e; border-top: 1px solid #ccc; padding-top: 10px; }
+  @media print { body { margin: 0; } }
+</style>
+</head>
+<body>
+  <h1>Hotel Vittorio Veneto · Napoli</h1>
+  <div class="sub">Via Milano, 96 · info@hotelvittorioveneto.com</div>
+  <h2>Riepilogo prenotazione</h2>
+  <div class="row"><strong>Numero prenotazione</strong><span>N. ${booking.booking_number || ('#' + booking.id)}</span></div>
+  <div class="row"><strong>Stato</strong><span>${st}</span></div>
+  <div class="row"><strong>Data richiesta</strong><span>${formatDateTime(booking.created_at)}</span></div>
+  <h2>Ospite</h2>
+  <div class="row"><strong>Nome e cognome</strong><span>${booking.guest_name}</span></div>
+  <div class="row"><strong>Email</strong><span>${booking.guest_email}</span></div>
+  <div class="row"><strong>Telefono</strong><span>${booking.guest_phone || 'Non fornito'}</span></div>
+  ${booking.notes ? `<div class="row"><strong>Richieste speciali</strong><span>${booking.notes}</span></div>` : ''}
+  <h2>Camera e date</h2>
+  <div class="row"><strong>Camera</strong><span>${booking.room_type_name || '—'}</span></div>
+  <div class="row"><strong>Ospiti</strong><span>${booking.num_guests}</span></div>
+  <div class="row"><strong>Check-in</strong><span>${formatDate(booking.check_in)}</span></div>
+  <div class="row"><strong>Check-out</strong><span>${formatDate(booking.check_out)}</span></div>
+  <div class="row"><strong>Notti</strong><span>${nights}</span></div>
+  <h2>Pagamento</h2>
+  <div class="row"><strong>Metodo</strong><span>${method}</span></div>
+  <div class="row"><strong>Totale soggiorno</strong><span>${euro(booking.total_price)}</span></div>
+  <div class="row"><strong>Acconto prima notte</strong><span>${booking.first_night_amount ? euro(booking.first_night_amount) : '—'}</span></div>
+  <div class="row"><strong>Saldo in struttura</strong><span>${balance !== null ? euro(balance) : '—'}</span></div>
+  <div class="footer">Documento stampato da Reception · Hotel Vittorio Veneto · ${new Date().toLocaleDateString('it-IT')}</div>
+  <script>window.print();</script>
+</body>
+</html>`);
+    w.document.close();
+    w.focus();
+  };
+
   const today = new Date().toISOString().split('T')[0];
 
   const bookingInTab = (b) => {
@@ -426,12 +487,21 @@ const AdminPanel = ({ apiUrl }) => {
             </div>
             <div className="doc-modal-body">
               {docToView.startsWith('data:image') ? (
-                <img src={docToView} alt="Documento d'identità" style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: '6px' }} />
+                <img src={docToView} alt="Documento d'identità" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '6px' }} />
               ) : docToView.startsWith('data:application/pdf') ? (
-                <iframe src={docToView} title="Documento d'identità" style={{ width: '100%', height: '75vh', border: 'none' }} />
+                <iframe src={docToView} title="Documento d'identità" style={{ width: '100%', height: '65vh', border: 'none' }} />
               ) : (
-                <a href={docToView} download>Scarica il documento</a>
+                <p>Il documento caricato non è un'immagine o un PDF.</p>
               )}
+              <div style={{ marginTop: '1rem' }}>
+                <a
+                  href={docToView}
+                  download="documento-identita"
+                  className="btn btn-gold"
+                >
+                  Scarica documento
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -703,9 +773,14 @@ const AdminPanel = ({ apiUrl }) => {
                     <h4>{booking.guest_name}</h4>
                     <span className="booking-guest-email">{booking.guest_email}</span>
                   </div>
-                  <span className={`booking-status ${booking.status}`}>
-                    {statusLabel(booking.status)}
-                  </span>
+                  <div className="booking-header-right">
+                    {booking.booking_number && (
+                      <span className="booking-number">N. {booking.booking_number}</span>
+                    )}
+                    <span className={`booking-status ${booking.status}`}>
+                      {statusLabel(booking.status)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="booking-card-details">
@@ -781,16 +856,6 @@ const AdminPanel = ({ apiUrl }) => {
                     >
                       Visualizza documento
                     </button>
-                    {booking.id_document.startsWith('data:image') && (
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <img
-                          src={booking.id_document}
-                          alt="Documento d'identità"
-                          style={{ width: '100%', maxWidth: '260px', borderRadius: '6px', border: '1px solid #eee', cursor: 'pointer' }}
-                          onClick={() => setDocToView(booking.id_document)}
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -846,6 +911,16 @@ const AdminPanel = ({ apiUrl }) => {
                     </button>
                   </div>
                 )}
+
+                <div className="booking-card-actions">
+                  <button
+                    type="button"
+                    onClick={() => handlePrint(booking)}
+                    className="btn btn-secondary"
+                  >
+                    Stampa
+                  </button>
+                </div>
               </div>
             ))
           )}
