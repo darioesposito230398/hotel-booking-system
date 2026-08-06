@@ -517,6 +517,19 @@ function loadPhotoAsDataUrl(filename) {
   }
 }
 
+// Diagnostica: stato del seed foto (senza dati sensibili)
+app.get('/api/debug/seed', async (req, res) => {
+  try {
+    const meta = await pool.query('SELECT meta_key, meta_value FROM app_meta ORDER BY meta_key');
+    const photos = await pool.query(
+      'SELECT room_type_id, COUNT(*) AS count FROM room_photos GROUP BY room_type_id'
+    );
+    res.json({ meta: meta.rows, photos: photos.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
