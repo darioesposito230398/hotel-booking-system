@@ -414,9 +414,9 @@ async function initDatabase() {
       SET booking_number = nextval('booking_number_seq')
       WHERE booking_number IS NULL
     `);
-    // Remove ID documents from already-cancelled bookings (privacy)
+    // Remove ID documents from already-closed bookings (privacy)
     await client.query(`
-      UPDATE booking_requests SET id_document = NULL WHERE status = 'cancelled'
+      UPDATE booking_requests SET id_document = NULL WHERE status IN ('cancelled', 'rejected', 'voided')
     `);
 
     // Seed room types only if none exist (so admin edits persist across restarts)
@@ -1177,19 +1177,19 @@ async function autoRejectExpired() {
         try {
           await paypalVoidAuth(booking.paypal_auth_id);
           await pool.query(
-            'UPDATE booking_requests SET status = $1, payment_status = $2 WHERE id = $3',
+            'UPDATE booking_requests SET status = $1, payment_status = $2, id_document = NULL WHERE id = $3',
             ['rejected', 'voided', booking.id]
           );
         } catch (e) {
           console.error('Errore auto-rilasciamento PayPal:', e.message);
           await pool.query(
-            'UPDATE booking_requests SET status = $1 WHERE id = $2',
+            'UPDATE booking_requests SET status = $1, id_document = NULL WHERE id = $2',
             ['rejected', booking.id]
           );
         }
       } else {
         await pool.query(
-          'UPDATE booking_requests SET status = $1 WHERE id = $2',
+          'UPDATE booking_requests SET status = $1, id_document = NULL WHERE id = $2',
           ['rejected', booking.id]
         );
       }

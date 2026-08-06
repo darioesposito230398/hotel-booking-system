@@ -902,7 +902,7 @@ const AdminPanel = ({ apiUrl }) => {
                   </div>
                 </div>
 
-                {booking.id_document && booking.status !== 'cancelled' && (
+                {booking.id_document && ['pending', 'preconfirmed', 'confirmed'].includes(booking.status) && (
                   <div className="detail-item" style={{ marginTop: '0.75rem' }}>
                     <span className="detail-label">Documento d'identità</span>
                     <button
