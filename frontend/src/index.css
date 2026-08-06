@@ -1340,6 +1340,69 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.05em;
 }
 
+.room-photos-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bay);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.room-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.6rem;
+}
+
+.room-photo-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f0f1f3;
+}
+
+.room-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.room-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.room-photo-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  border: 1.5px dashed var(--gold);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: var(--gold);
+  background: rgba(178, 139, 55, 0.06);
+}
+
+.room-photo-add input {
+  display: none;
+}
+
 .booking-list h3 {
   color: var(--bay);
   margin-bottom: 1rem;

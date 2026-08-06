@@ -261,6 +261,44 @@ const AdminPanel = ({ apiUrl }) => {
     }
   };
 
+  const handleAddPhotos = async (roomId, files) => {
+    const token = localStorage.getItem('token');
+    for (const file of Array.from(files)) {
+      if (file.size > 20 * 1024 * 1024) {
+        setError(`"${file.name}" è troppo grande (max 20 MB).`);
+        continue;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError(`"${file.name}" non è un'immagine.`);
+        continue;
+      }
+      const reader = new FileReader();
+      const data = await new Promise((resolve) => {
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+      try {
+        await axios.post(`${apiUrl}/room-types/${roomId}/photos`, { data },
+          { headers: { Authorization: `Bearer ${token}` } });
+      } catch (err) {
+        setError(err.response?.data?.error || 'Errore nel caricamento della foto');
+      }
+    }
+    await fetchRooms();
+  };
+
+  const handleRemovePhoto = async (roomId, photoId) => {
+    if (!window.confirm('Rimuovere questa foto?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${apiUrl}/room-types/${roomId}/photos/${photoId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      await fetchRooms();
+    } catch (err) {
+      setError('Errore nella rimozione della foto');
+    }
+  };
+
   const handlePreConfirm = async (bookingId) => {
     if (!window.confirm('Inviare al cliente la mail con IBAN e lasciare la prenotazione in attesa del bonifico?')) return;
     try {
@@ -604,12 +642,6 @@ const AdminPanel = ({ apiUrl }) => {
               value={newRoom.max_guests}
               onChange={(e) => setNewRoom({ ...newRoom, max_guests: e.target.value })}
             />
-            <input
-              type="text"
-              placeholder="Immagine (es. doppia-standard.jpg)"
-              value={newRoom.photo}
-              onChange={(e) => setNewRoom({ ...newRoom, photo: e.target.value })}
-            />
             <textarea
               placeholder="Descrizione"
               value={newRoom.description}
@@ -635,17 +667,41 @@ const AdminPanel = ({ apiUrl }) => {
                   onChange={(e) => setRoomField(room.id, 'max_guests', e.target.value)}
                 />
               </div>
-              <input
-                type="text"
-                placeholder="Immagine (es. doppia-standard.jpg)"
-                value={room.photo || ''}
-                onChange={(e) => setRoomField(room.id, 'photo', e.target.value)}
-              />
               <textarea
                 rows="2"
                 value={room.description}
                 onChange={(e) => setRoomField(room.id, 'description', e.target.value)}
               />
+              <div className="room-photos">
+                <span className="room-photos-label">Foto della camera</span>
+                <div className="room-photos-grid">
+                  {(room.photos || []).map(photo => (
+                    <div key={photo.id} className="room-photo-thumb">
+                      <img src={photo.data} alt="Foto camera" />
+                      <button
+                        type="button"
+                        className="room-photo-remove"
+                        onClick={() => handleRemovePhoto(room.id, photo.id)}
+                        title="Rimuovi foto"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <label className="room-photo-add">
+                    <span>+</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        handleAddPhotos(room.id, e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
               <div className="room-edit-actions">
                 <span className="room-edit-price-label">Le tariffe si impostano nel calendario qui sotto</span>
                 <button

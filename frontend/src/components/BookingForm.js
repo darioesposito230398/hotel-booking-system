@@ -111,6 +111,9 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   };
 
   const getRoomPhoto = (room) => {
+    if (room?.photos?.length > 0) {
+      return room.photos[0].data;
+    }
     if (room?.photo) {
       return `/images/rooms/${room.photo}`;
     }

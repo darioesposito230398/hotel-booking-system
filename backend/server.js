@@ -350,6 +350,14 @@ async function initDatabase() {
         config_value TEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS room_photos (
+        id SERIAL PRIMARY KEY,
+        room_type_id INTEGER NOT NULL REFERENCES room_types(id) ON DELETE CASCADE,
+        data TEXT NOT NULL,
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Insert default payment config if not exists
@@ -403,6 +411,10 @@ async function initDatabase() {
       UPDATE booking_requests
       SET booking_number = nextval('booking_number_seq')
       WHERE booking_number IS NULL
+    `);
+    // Remove ID documents from already-cancelled bookings (privacy)
+    await client.query(`
+      UPDATE booking_requests SET id_document = NULL WHERE status = 'cancelled'
     `);
 
     // Seed room types only if none exist (so admin edits persist across restarts)
@@ -484,7 +496,60 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/room-types', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM room_types ORDER BY base_price');
-    res.json(result.rows);
+    const photosResult = await pool.query('SELECT room_type_id, id, data FROM room_photos ORDER BY position, id');
+    const photosByRoom = {};
+    photosResult.rows.forEach(p => {
+      (photosByRoom[p.room_type_id] = photosByRoom[p.room_type_id] || []).push(p);
+    });
+    const rooms = result.rows.map(r => ({
+      ...r,
+      photos: photosByRoom[r.id] || []
+    }));
+    res.json(rooms);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: upload a photo for a room
+app.post('/api/room-types/:id/photos', authenticateToken, async (req, res) => {
+  try {
+    const { data } = req.body;
+    const roomId = parseInt(req.params.id, 10);
+    if (!data) {
+      return res.status(400).json({ error: 'Foto mancante' });
+    }
+    if (typeof data === 'string' && data.length > 20 * 1024 * 1024) {
+      return res.status(413).json({ error: 'La foto è troppo grande (max 20 MB).' });
+    }
+    const posResult = await pool.query(
+      'SELECT COALESCE(MAX(position), -1) + 1 AS next FROM room_photos WHERE room_type_id = $1',
+      [roomId]
+    );
+    const position = parseInt(posResult.rows[0].next, 10);
+    const result = await pool.query(
+      'INSERT INTO room_photos (room_type_id, data, position) VALUES ($1, $2, $3) RETURNING id, data, position',
+      [roomId, data, position]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: delete a room photo
+app.delete('/api/room-types/:id/photos/:photoId', authenticateToken, async (req, res) => {
+  try {
+    const roomId = parseInt(req.params.id, 10);
+    const photoId = parseInt(req.params.photoId, 10);
+    const result = await pool.query(
+      'DELETE FROM room_photos WHERE id = $1 AND room_type_id = $2 RETURNING id',
+      [photoId, roomId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Foto non trovata' });
+    }
+    res.json({ message: 'Foto eliminata' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
