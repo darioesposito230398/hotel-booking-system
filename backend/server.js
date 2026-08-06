@@ -446,7 +446,9 @@ async function initDatabase() {
 }
 
 // Seed foto esistenti: carica nella tabella room_photos le immagini legacy
-// (frontend/public/images/rooms) per ogni tipologia, una sola volta.
+// (backend/assets/rooms, copia di quelle usate in home) per ogni tipologia.
+// Ogni camera viene marcata come "seeded" così non risemina se l'admin le
+// elimina in seguito.
 async function seedRoomPhotos() {
   const client = await pool.connect();
   try {
@@ -456,10 +458,8 @@ async function seedRoomPhotos() {
         meta_value TEXT
       )
     `);
-    const seeded = await client.query(
-      `SELECT meta_value FROM app_meta WHERE meta_key = 'room_photos_seeded'`
-    );
-    if (seeded.rows.length > 0) return;
+    // Rimuove il vecchio flag globale (il primo seed è fallito, va ritentato)
+    await client.query(`DELETE FROM app_meta WHERE meta_key = 'room_photos_seeded'`);
 
     const rooms = await client.query(`
       SELECT id, photo FROM room_types
@@ -467,7 +467,26 @@ async function seedRoomPhotos() {
       ORDER BY id
     `);
     for (const room of rooms.rows) {
-      const dataUrl = await loadPhotoAsDataUrl(room.photo);
+      const seededKey = `photo_seed_${room.id}`;
+      const done = await client.query(
+        'SELECT meta_value FROM app_meta WHERE meta_key = $1',
+        [seededKey]
+      );
+      if (done.rows.length > 0) continue;
+
+      const existing = await client.query(
+        'SELECT COUNT(*) AS count FROM room_photos WHERE room_type_id = $1',
+        [room.id]
+      );
+      if (parseInt(existing.rows[0].count, 10) > 0) {
+        await client.query(
+          'INSERT INTO app_meta (meta_key, meta_value) VALUES ($1, $2) ON CONFLICT (meta_key) DO NOTHING',
+          [seededKey, '1']
+        );
+        continue;
+      }
+
+      const dataUrl = loadPhotoAsDataUrl(room.photo);
       if (!dataUrl) {
         console.log(`[PHOTOS] Impossibile caricare "${room.photo}"`);
         continue;
@@ -476,33 +495,25 @@ async function seedRoomPhotos() {
         'INSERT INTO room_photos (room_type_id, data, position) VALUES ($1, $2, 0)',
         [room.id, dataUrl]
       );
+      await client.query(
+        'INSERT INTO app_meta (meta_key, meta_value) VALUES ($1, $2) ON CONFLICT (meta_key) DO NOTHING',
+        [seededKey, '1']
+      );
       console.log(`[PHOTOS] Foto seed per tipologia ${room.id}: ${room.photo}`);
     }
-    await client.query(`
-      INSERT INTO app_meta (meta_key, meta_value) VALUES ('room_photos_seeded', '1')
-      ON CONFLICT (meta_key) DO NOTHING
-    `);
   } finally {
     client.release();
   }
 }
 
-async function loadPhotoAsDataUrl(filename) {
+function loadPhotoAsDataUrl(filename) {
   const mime = String(filename).toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-  const localPath = path.join(__dirname, '..', 'frontend', 'public', 'images', 'rooms', filename);
+  const filePath = path.join(__dirname, 'assets', 'rooms', filename);
   try {
-    const data = fs.readFileSync(localPath);
+    const data = fs.readFileSync(filePath);
     return `data:${mime};base64,${data.toString('base64')}`;
   } catch (err) {
-    try {
-      const base = process.env.FRONTEND_URL || 'https://hotel-booking-system-dar15.vercel.app';
-      const res = await fetch(`${base}/images/rooms/${filename}`);
-      if (!res.ok) return null;
-      const buf = Buffer.from(await res.arrayBuffer());
-      return `data:${mime};base64,${buf.toString('base64')}`;
-    } catch (err2) {
-      return null;
-    }
+    return null;
   }
 }
 
