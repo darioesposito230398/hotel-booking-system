@@ -622,7 +622,8 @@ app.get('/api/debug/smtp', async (req, res) => {
 });
 
 // Diagnostica: prova a inviare un'email di test e restituisce l'errore esatto
-app.post('/api/debug/send-test', async (req, res) => {
+// (protetto: solo utenti admin autenticati)
+app.post('/api/debug/send-test', authenticateToken, async (req, res) => {
   const { to } = req.body || {};
   if (!to) return res.status(400).json({ error: 'Indirizzo destinatario mancante (body: { "to": "..." })' });
   if (!process.env.EMAIL_API_KEY && !(SMTP.host && SMTP.user && SMTP.pass)) {
@@ -635,29 +636,6 @@ app.post('/api/debug/send-test', async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message, code: err.cause?.code });
   }
-});
-
-// Diagnostica: testa la raggiungibilità TCP di un host:porta dalla rete del server
-app.get('/api/debug/tcptest', async (req, res) => {
-  const net = require('net');
-  const { host, port } = req.query;
-  if (!host || !port) return res.status(400).json({ error: 'Parametri mancanti: ?host=..&port=..' });
-  const sock = new net.Socket();
-  const timeout = setTimeout(() => {
-    sock.destroy();
-    res.json({ host, port, ok: false, error: 'ETIMEDOUT' });
-  }, 8000);
-  sock.setTimeout(8000);
-  sock.once('connect', () => {
-    clearTimeout(timeout);
-    sock.destroy();
-    res.json({ host, port, ok: true });
-  });
-  sock.once('error', (err) => {
-    clearTimeout(timeout);
-    res.json({ host, port, ok: false, error: err.code || err.message });
-  });
-  sock.connect(parseInt(port, 10), host);
 });
 
 // Auth middleware
