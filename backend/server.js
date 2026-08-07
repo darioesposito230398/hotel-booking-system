@@ -40,7 +40,10 @@ function getTransporter() {
       host: SMTP.host,
       port: SMTP.port,
       secure: SMTP.port === 465,
-      auth: { user: SMTP.user, pass: SMTP.pass }
+      auth: { user: SMTP.user, pass: SMTP.pass },
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
     });
   }
   return smtpTransporter;
@@ -51,7 +54,13 @@ async function sendEmail(to, subject, html) {
     console.log(`[EMAIL LOG] (SMTP non configurato)\nA: ${to}\nOggetto: ${subject}\n${html}\n`);
     return;
   }
-  await t.sendMail({ from: SMTP.from, to, subject, html });
+  try {
+    await t.sendMail({ from: SMTP.from, to, subject, html });
+    console.log(`[EMAIL INVIATA] ${to} :: ${subject}`);
+  } catch (err) {
+    console.error(`[EMAIL ERRORE] A: ${to}\n${err.message}`);
+    throw err;
+  }
 }
 
 let paypalTokenCache = null;
