@@ -540,6 +540,38 @@ app.get('/api/debug/seed', async (req, res) => {
   }
 });
 
+// Diagnostica: stato SMTP (senza esporre la password)
+app.get('/api/debug/smtp', async (req, res) => {
+  res.json({
+    configured: !!(SMTP.host && SMTP.user && SMTP.pass),
+    host: SMTP.host || null,
+    port: Number(SMTP.port),
+    user: SMTP.user || null,
+    from: SMTP.from || null
+  });
+});
+
+// Diagnostica: prova a inviare un'email di test e restituisce l'errore esatto
+app.post('/api/debug/send-test', async (req, res) => {
+  const { to } = req.body || {};
+  if (!to) return res.status(400).json({ error: 'Indirizzo destinatario mancante (body: { "to": "..." })' });
+  const t = getTransporter();
+  if (!t) {
+    return res.status(400).json({ error: 'SMTP non configurato. Imposta SMTP_HOST / SMTP_USER / SMTP_PASS su Render.' });
+  }
+  try {
+    await t.sendMail({
+      from: SMTP.from,
+      to,
+      subject: 'Test email - Hotel Vittorio Veneto',
+      html: '<p>Questa è un\'email di prova dal sistema di prenotazioni.</p><p>Se la ricevi, la configurazione SMTP funziona.</p>'
+    });
+    res.json({ ok: true, message: 'Email di test inviata a ' + to });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message, code: err.code });
+  }
+});
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
