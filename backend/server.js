@@ -585,6 +585,29 @@ app.post('/api/debug/send-test', async (req, res) => {
   }
 });
 
+// Diagnostica: testa la raggiungibilità TCP di un host:porta dalla rete del server
+app.get('/api/debug/tcptest', async (req, res) => {
+  const net = require('net');
+  const { host, port } = req.query;
+  if (!host || !port) return res.status(400).json({ error: 'Parametri mancanti: ?host=..&port=..' });
+  const sock = new net.Socket();
+  const timeout = setTimeout(() => {
+    sock.destroy();
+    res.json({ host, port, ok: false, error: 'ETIMEDOUT' });
+  }, 8000);
+  sock.setTimeout(8000);
+  sock.once('connect', () => {
+    clearTimeout(timeout);
+    sock.destroy();
+    res.json({ host, port, ok: true });
+  });
+  sock.once('error', (err) => {
+    clearTimeout(timeout);
+    res.json({ host, port, ok: false, error: err.code || err.message });
+  });
+  sock.connect(parseInt(port, 10), host);
+});
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
