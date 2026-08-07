@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { PayPalButtons } from '@paypal/react-paypal-js';
 import axios from 'axios';
 import { useLanguage } from '../i18n';
 import RoomGallery from './RoomGallery';
 
-const BookingForm = ({ apiUrl, paypalClientId }) => {
+const BookingForm = ({ apiUrl }) => {
   const { t, roomName, roomDesc } = useLanguage();
   
   const [roomTypes, setRoomTypes] = useState([]);
@@ -25,7 +24,7 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
   const [discount, setDiscount] = useState(0.1);
   const [nights, setNights] = useState(0);
   const [hasQuote, setHasQuote] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('paypal');
+  const [paymentMethod, setPaymentMethod] = useState('bonifico');
   const [idDocument, setIdDocument] = useState('');
   const [idDocumentName, setIdDocumentName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,11 +46,6 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     };
     reader.readAsDataURL(file);
   };
-
-  const isFormComplete = () =>
-    Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
-      formData.guestName && formData.guestEmail && formData.confirmEmail &&
-      formData.guestPhone && formData.numGuests && idDocument);
 
   const isQuoteReady = () =>
     Boolean(formData.checkIn && formData.checkOut && formData.roomTypeId &&
@@ -190,47 +184,12 @@ const BookingForm = ({ apiUrl, paypalClientId }) => {
     }
   };
 
-  const handlePayPalSuccess = async (data) => {
-    const invalid = validate();
-    if (invalid) {
-      setError(invalid);
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      await axios.post(`${apiUrl}/booking-requests`, {
-        ...formData,
-        idDocument,
-        paymentMethod: 'paypal',
-        paypalOrderId: data.orderID
-      });
-      setSuccess(true);
-      setLoading(false);
-    } catch (err) {
-      if (err.response?.status === 413) {
-        setError('Il documento d\'identità è troppo grande. Carica un file più piccolo (max 5 MB).');
-      } else {
-        setError(err.response?.data?.error || 'Si è verificato un errore durante la prenotazione. Riprova.');
-      }
-      setLoading(false);
-    }
-  };
-
 if (success) {
     return (
       <div className="success-message">
         <h3>{t('success.title')}</h3>
-        {paymentMethod === 'bonifico' ? (
-          <>
-            <p>{t('success.bonifico.done')}</p>
-            <p>{t('success.bonifico.confirm')}</p>
-          </>
-        ) : paymentMethod === 'paypal' ? (
-          <p>{t('success.paypal')}</p>
-        ) : (
-          <p>{t('success.nocharge')}</p>
-        )}
+        <p>{t('success.bonifico.done')}</p>
+        <p>{t('success.bonifico.confirm')}</p>
         <p>{t('success.validafter')}</p>
         <p>{t('success.email')}</p>
       </div>
@@ -437,19 +396,6 @@ if (success) {
             <input
               type="radio"
               name="paymentMethod"
-              value="paypal"
-              checked={paymentMethod === 'paypal'}
-              onChange={() => setPaymentMethod('paypal')}
-            />
-            <div>
-              <strong>{t('payment.paypal')}</strong>
-              <small>{t('payment.paypal.desc')}</small>
-            </div>
-          </label>
-          <label className="payment-option">
-            <input
-              type="radio"
-              name="paymentMethod"
               value="bonifico"
               checked={paymentMethod === 'bonifico'}
               onChange={() => setPaymentMethod('bonifico')}
@@ -478,39 +424,6 @@ if (success) {
           >
             {loading ? t('booking.loading') : t('booking.submit')}
           </button>
-        )}
-
-        {paymentMethod === 'paypal' && !isFormComplete() && (
-          <p className="paypal-loading" style={{ marginTop: '1.25rem' }}>{t('booking.completeFields')}</p>
-        )}
-
-        {paymentMethod === 'paypal' && isFormComplete() && (
-          <div className="paypal-block" style={{ marginTop: '1.25rem' }}>
-            {!paypalClientId ? (
-              <p className="paypal-loading">{t('paypal.notConfigured')}</p>
-            ) : (
-              <PayPalButtons
-                style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }}
-                forceReRender={[formData.checkIn, formData.checkOut, formData.roomTypeId]}
-                createOrder={async () => {
-                  if (!hasQuote || totalPrice <= 0) {
-                    setError(t('booking.quote.first'));
-                    throw new Error('quote required');
-                  }
-                  const res = await axios.post(`${apiUrl}/paypal/create-order`, {
-                    roomTypeId: formData.roomTypeId,
-                    checkIn: formData.checkIn,
-                    checkOut: formData.checkOut
-                  });
-                  return res.data.orderId;
-                }}
-                onApprove={async (data) => {
-                  await handlePayPalSuccess(data);
-                }}
-                onError={() => setError(t('paypal.error'))}
-              />
-            )}
-          </div>
         )}
       </form>
     </div>

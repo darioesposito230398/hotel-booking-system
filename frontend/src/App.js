@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import axios from 'axios';
 import BookingForm from './components/BookingForm';
 import AdminPanel from './components/AdminPanel';
@@ -10,7 +9,6 @@ import { LanguageProvider, useLanguage } from './i18n';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const PAYPAL_CLIENT_ID = process.env.REACT_APP_PAYPAL_CLIENT_ID || '';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -163,7 +161,7 @@ function App() {
                 <p className="room-desc">{roomDesc(room.description, room.name)}</p>
                 <div className="room-meta">
                   <span className="room-price direct">{t('rooms.directBadge')}</span>
-                  <span className="room-guests">{room.max_guests} {room.max_guests <= 1 ? t('rooms.guest.1') : room.max_guests === 2 ? t('rooms.guest.2') : t('rooms.guest.3')}</span>
+                  <span className="room-guests">{room.max_guests <= 1 ? t('rooms.guest.1') : room.max_guests === 2 ? t('rooms.guest.2') : t('rooms.guest.3')}</span>
                 </div>
               </div>
             </article>
@@ -292,15 +290,7 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/prenota" element={
-              <PayPalScriptProvider options={{
-                clientId: PAYPAL_CLIENT_ID,
-                currency: 'EUR',
-                intent: 'authorize'
-              }} deferLoading={!PAYPAL_CLIENT_ID}>
-                <BookingForm apiUrl={API_URL} paypalClientId={PAYPAL_CLIENT_ID} />
-              </PayPalScriptProvider>
-            } />
+            <Route path="/prenota" element={<BookingForm apiUrl={API_URL} />} />
             <Route path="/login" element={
               isAuthenticated ? (
                 <Navigate to="/admin" />
