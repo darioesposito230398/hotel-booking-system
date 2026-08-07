@@ -41,9 +41,13 @@ function getTransporter() {
       port: SMTP.port,
       secure: SMTP.port === 465,
       auth: { user: SMTP.user, pass: SMTP.pass },
+      tls: { rejectUnauthorized: false },
       connectionTimeout: 20000,
       greetingTimeout: 15000,
       socketTimeout: 20000
+    });
+    smtpTransporter.on('error', (err) => {
+      console.error('[SMTP ERROR EVENT]', err && err.message || err);
     });
   }
   return smtpTransporter;
@@ -1265,6 +1269,14 @@ async function autoRejectExpired() {
 }
 
 // Start server
+// Non lasciare che errori non gestiti (es. TLS/SMTP) uccidano il processo
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNCAUGHT REJECTION]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err && err.stack || err);
+});
+
 initDatabase()
   .then(async () => {
     console.log('Database initialized');
