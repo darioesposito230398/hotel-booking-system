@@ -53,6 +53,19 @@ function getTransporter() {
   return smtpTransporter;
 }
 async function sendEmail(to, subject, html) {
+  // 1) Provider HTTP API (Resend/Brevo): funziona anche se Render blocca le porte SMTP
+  if (process.env.EMAIL_API_KEY) {
+    try {
+      await sendViaHttp({ to, subject, html });
+      console.log(`[EMAIL INVIATA] ${to} :: ${subject}`);
+    } catch (err) {
+      console.error(`[EMAIL ERRORE] A: ${to}\n${err.message}`);
+      throw err;
+    }
+    return;
+  }
+
+  // 2) Fallback: SMTP classico (per sviluppo locale)
   const t = getTransporter();
   if (!t) {
     console.log(`[EMAIL LOG] (SMTP non configurato)\nA: ${to}\nOggetto: ${subject}\n${html}\n`);
@@ -64,6 +77,46 @@ async function sendEmail(to, subject, html) {
   } catch (err) {
     console.error(`[EMAIL ERRORE] A: ${to}\n${err.message}`);
     throw err;
+  }
+}
+
+function parseSender(from) {
+  const m = /^(.*?)\s*<(.*)>$/.exec(String(from || '').trim());
+  if (m) return { name: m[1].trim(), email: m[2].trim() };
+  return { name: 'Hotel Vittorio Veneto', email: String(from || '').trim() };
+}
+
+async function sendViaHttp({ to, subject, html }) {
+  const key = process.env.EMAIL_API_KEY;
+  if (!key) throw new Error('EMAIL_API_KEY non configurata');
+  const provider = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
+  const sender = parseSender(SMTP.from);
+
+  if (provider === 'brevo') {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: { name: sender.name || 'Hotel Vittorio Veneto', email: sender.email },
+        to: [{ email: to }],
+        subject,
+        html
+      })
+    });
+    if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`);
+    return;
+  }
+
+  // default: Resend
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: SMTP.from, to, subject, html })
+  });
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch (e) {}
+    throw new Error(`Resend ${res.status}: ${body}`);
   }
 }
 
@@ -568,20 +621,15 @@ app.get('/api/debug/smtp', async (req, res) => {
 app.post('/api/debug/send-test', async (req, res) => {
   const { to } = req.body || {};
   if (!to) return res.status(400).json({ error: 'Indirizzo destinatario mancante (body: { "to": "..." })' });
-  const t = getTransporter();
-  if (!t) {
-    return res.status(400).json({ error: 'SMTP non configurato. Imposta SMTP_HOST / SMTP_USER / SMTP_PASS su Render.' });
+  if (!process.env.EMAIL_API_KEY && !(SMTP.host && SMTP.user && SMTP.pass)) {
+    return res.status(400).json({ error: 'Invio non configurato. Imposta EMAIL_API_KEY (Resend/Brevo) oppure SMTP_* nu Render.' });
   }
   try {
-    await t.sendMail({
-      from: SMTP.from,
-      to,
-      subject: 'Test email - Hotel Vittorio Veneto',
-      html: '<p>Questa è un\'email di prova dal sistema di prenotazioni.</p><p>Se la ricevi, la configurazione SMTP funziona.</p>'
-    });
-    res.json({ ok: true, message: 'Email di test inviata a ' + to });
+    await sendEmail(to, 'Test email - Hotel Vittorio Veneto',
+      '<p>Questa è un\'email di prova dal sistema di prenotazioni.</p><p>Se la ricevi, la configurazione email funziona.</p>');
+    res.json({ ok: true, message: 'Email di test inviata a ' + to, via: process.env.EMAIL_API_KEY ? 'api' : 'smtp' });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message, code: err.code });
+    res.status(500).json({ ok: false, error: err.message, code: err.cause?.code });
   }
 });
 
