@@ -1790,6 +1790,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .room-lightbox-inner {
   position: relative;
+  width: min(96vw, 1600px);
+  height: min(92vh, 1000px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1797,8 +1799,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .room-lightbox-img {
-  max-width: min(92vw, 1200px);
-  max-height: 86vh;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   border-radius: 6px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
