@@ -606,14 +606,18 @@ app.get('/api/debug/seed', async (req, res) => {
   }
 });
 
-// Diagnostica: stato SMTP (senza esporre la password)
+// Diagnostica: stato invio email (senza esporre i segreti)
 app.get('/api/debug/smtp', async (req, res) => {
+  const key = process.env.EMAIL_API_KEY || '';
   res.json({
     configured: !!(SMTP.host && SMTP.user && SMTP.pass),
     host: SMTP.host || null,
     port: Number(SMTP.port),
     user: SMTP.user || null,
-    from: SMTP.from || null
+    from: SMTP.from || null,
+    emailApiKey: key ? 'impostata' : 'non impostata',
+    emailApiKeyPreview: key ? `${key.slice(0, 8)}…(${key.length} caratteri)` : null,
+    emailProvider: process.env.EMAIL_PROVIDER || 'resend'
   });
 });
 
