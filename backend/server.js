@@ -621,6 +621,20 @@ app.get('/api/debug/smtp', async (req, res) => {
   });
 });
 
+// Auth middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
 // Diagnostica: prova a inviare un'email di test e restituisce l'errore esatto
 // (protetto: solo utenti admin autenticati)
 app.post('/api/debug/send-test', authenticateToken, async (req, res) => {
@@ -637,20 +651,6 @@ app.post('/api/debug/send-test', authenticateToken, async (req, res) => {
     res.status(500).json({ ok: false, error: err.message, code: err.cause?.code });
   }
 });
-
-// Auth middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.sendStatus(401);
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
 
 // Routes
 
