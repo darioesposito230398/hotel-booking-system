@@ -1779,23 +1779,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .room-lightbox {
+  border: none;
+  padding: 0;
+  margin: auto;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  overflow: hidden;
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: rgba(8, 12, 18, 0.94);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.room-lightbox-inner {
-  position: relative;
-  width: min(96vw, 1600px);
-  height: min(92vh, 1000px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
+.room-lightbox::backdrop {
+  background: rgba(8, 12, 18, 0.94);
 }
 
 .room-lightbox-img {
