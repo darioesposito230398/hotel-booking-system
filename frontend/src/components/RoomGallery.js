@@ -29,11 +29,6 @@ const RoomGallery = ({ photos, name }) => {
       <div className={`${className} room-gallery-empty`}>{name || 'Camera'}</div>
     );
 
-  const close = () => setOpen(false);
-  const onBackgroundClick = (e) => {
-    if (e.target === e.currentTarget) close();
-  };
-
   return (
     <>
       <div className="room-gallery">
@@ -63,36 +58,39 @@ const RoomGallery = ({ photos, name }) => {
       </div>
 
       {open && (
-        <div className="room-lightbox" onClick={onBackgroundClick} role="dialog" aria-modal="true">
-          <button type="button" className="room-lightbox-close" onClick={close} aria-label="Chiudi">
+        <div className="room-lightbox" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="room-lightbox-close"
+            onClick={() => setOpen(false)}
+            aria-label="Chiudi"
+          >
             ×
           </button>
-          <div className="room-lightbox-inner">
-            {images.length > 1 && (
-              <button
-                type="button"
-                className="room-lightbox-nav prev"
-                onClick={() => setActive((a) => (a - 1 + images.length) % images.length)}
-                aria-label="Precedente"
-              >
-                ‹
-              </button>
-            )}
-            {renderImage(images[active], 'room-lightbox-img', name)}
-            {images.length > 1 && (
-              <button
-                type="button"
-                className="room-lightbox-nav next"
-                onClick={() => setActive((a) => (a + 1) % images.length)}
-                aria-label="Successiva"
-              >
-                ›
-              </button>
-            )}
-            {images.length > 1 && (
-              <div className="room-lightbox-count">{active + 1} / {images.length}</div>
-            )}
-          </div>
+          {images.length > 1 && (
+            <button
+              type="button"
+              className="room-lightbox-nav prev"
+              onClick={() => setActive((a) => (a - 1 + images.length) % images.length)}
+              aria-label="Precedente"
+            >
+              ‹
+            </button>
+          )}
+          {renderImage(images[active], 'room-lightbox-img', name)}
+          {images.length > 1 && (
+            <button
+              type="button"
+              className="room-lightbox-nav next"
+              onClick={() => setActive((a) => (a + 1) % images.length)}
+              aria-label="Successiva"
+            >
+              ›
+            </button>
+          )}
+          {images.length > 1 && (
+            <div className="room-lightbox-count">{active + 1} / {images.length}</div>
+          )}
         </div>
       )}
     </>
