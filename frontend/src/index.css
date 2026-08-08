@@ -1781,11 +1781,10 @@ h1, h2, h3, h4, h5, h6 {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(8, 12, 18, 0.92);
+  background: rgba(8, 12, 18, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: zoom-out;
 }
 
 .room-lightbox-inner {

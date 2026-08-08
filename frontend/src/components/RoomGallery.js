@@ -13,8 +13,8 @@ const RoomGallery = ({ photos, name }) => {
     if (!open) return;
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
-      if (e.key === 'ArrowRight') setActive(a => (a + 1) % images.length);
-      if (e.key === 'ArrowLeft') setActive(a => (a - 1 + images.length) % images.length);
+      else if (e.key === 'ArrowRight') setActive((a) => (a + 1) % images.length);
+      else if (e.key === 'ArrowLeft') setActive((a) => (a - 1 + images.length) % images.length);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -22,13 +22,17 @@ const RoomGallery = ({ photos, name }) => {
 
   if (images.length === 1 && !images[0]) return null;
 
-  const renderImage = (src, className, alt) => (
+  const renderImage = (src, className, alt) =>
     src ? (
       <img src={src} alt={alt} className={className} />
     ) : (
       <div className={`${className} room-gallery-empty`}>{name || 'Camera'}</div>
-    )
-  );
+    );
+
+  const close = () => setOpen(false);
+  const onBackgroundClick = (e) => {
+    if (e.target === e.currentTarget) close();
+  };
 
   return (
     <>
@@ -37,7 +41,7 @@ const RoomGallery = ({ photos, name }) => {
           type="button"
           className="room-gallery-main"
           onClick={() => setOpen(true)}
-          aria-label="Apri galleria foto"
+          aria-label={`Apri galleria foto ${name || ''}`}
         >
           {renderImage(images[active], 'room-gallery-img', name)}
         </button>
@@ -51,11 +55,7 @@ const RoomGallery = ({ photos, name }) => {
                 onClick={() => setActive(i)}
                 aria-label={`Foto ${i + 1}`}
               >
-                {src ? (
-                  <img src={src} alt={`${name} ${i + 1}`} />
-                ) : (
-                  <span>{name || 'Camera'}</span>
-                )}
+                {src ? <img src={src} alt={`${name} ${i + 1}`} /> : <span>{name || 'Camera'}</span>}
               </button>
             ))}
           </div>
@@ -63,27 +63,16 @@ const RoomGallery = ({ photos, name }) => {
       </div>
 
       {open && (
-        <div
-          className="room-lightbox"
-          onClick={() => setOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Galleria foto"
-        >
-          <button
-            type="button"
-            className="room-lightbox-close"
-            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-            aria-label="Chiudi"
-          >
+        <div className="room-lightbox" onClick={onBackgroundClick} role="dialog" aria-modal="true">
+          <button type="button" className="room-lightbox-close" onClick={close} aria-label="Chiudi">
             ×
           </button>
-          <div className="room-lightbox-inner" onClick={(e) => e.stopPropagation()}>
+          <div className="room-lightbox-inner">
             {images.length > 1 && (
               <button
                 type="button"
                 className="room-lightbox-nav prev"
-                onClick={(e) => { e.stopPropagation(); setActive(a => (a - 1 + images.length) % images.length); }}
+                onClick={() => setActive((a) => (a - 1 + images.length) % images.length)}
                 aria-label="Precedente"
               >
                 ‹
@@ -94,7 +83,7 @@ const RoomGallery = ({ photos, name }) => {
               <button
                 type="button"
                 className="room-lightbox-nav next"
-                onClick={(e) => { e.stopPropagation(); setActive(a => (a + 1) % images.length); }}
+                onClick={() => setActive((a) => (a + 1) % images.length)}
                 aria-label="Successiva"
               >
                 ›
