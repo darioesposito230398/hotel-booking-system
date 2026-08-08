@@ -57,6 +57,8 @@ const translations = {
     'rooms.guest.1': '1 ospite',
     'rooms.guest.2': '2 ospiti',
     'rooms.guest.3': '3 ospiti',
+    'rooms.error': 'Non riusciamo a caricare le camere in questo momento. Riprova.',
+    'rooms.retry': 'Riprova',
 
     'services.eyebrow': 'Servizi inclusi',
     'services.title': 'Quello che trovi da noi',
@@ -203,6 +205,8 @@ const translations = {
     'rooms.guest.1': '1 guest',
     'rooms.guest.2': '2 guests',
     'rooms.guest.3': '3 guests',
+    'rooms.error': 'We can\'t load the rooms right now. Please try again.',
+    'rooms.retry': 'Try again',
 
     'services.eyebrow': 'Services included',
     'services.title': 'What you’ll find with us',

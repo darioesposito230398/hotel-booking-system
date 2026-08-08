@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import BookingForm from './components/BookingForm';
@@ -13,16 +13,30 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [rooms, setRooms] = useState([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+  const [roomsError, setRoomsError] = useState(false);
+
+  const loadRooms = useCallback(() => {
+    setRoomsLoading(true);
+    setRoomsError(false);
+    axios.get(`${API_URL}/room-types`)
+      .then(res => {
+        setRooms(res.data);
+        setRoomsLoading(false);
+      })
+      .catch(() => {
+        setRoomsError(true);
+        setRoomsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
     }
-    axios.get(`${API_URL}/room-types`)
-      .then(res => setRooms(res.data))
-      .catch(() => {});
-  }, []);
+    loadRooms();
+  }, [loadRooms]);
 
   const handleLogin = (token) => {
     localStorage.setItem('token', token);
@@ -153,7 +167,21 @@ function App() {
           <p>{t('rooms.p')}</p>
         </div>
         <div className="room-grid">
-          {rooms.map(room => (
+          {roomsLoading && rooms.length === 0 ? (
+            <div className="loading" style={{ gridColumn: '1 / -1' }}>
+              <div className="spinner" />
+            </div>
+          ) : roomsError && rooms.length === 0 ? (
+            <div className="room-card" style={{ gridColumn: '1 / -1', alignItems: 'center', textAlign: 'center', justifyContent: 'center' }}>
+              <div className="room-body" style={{ alignItems: 'center', textAlign: 'center' }}>
+                <p className="room-desc" style={{ marginBottom: '0.75rem' }}>{t('rooms.error')}</p>
+                <button type="button" className="btn btn-gold" onClick={loadRooms}>
+                  {t('rooms.retry')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            rooms.map(room => (
             <article className="room-card" key={room.id}>
               <RoomGallery photos={getRoomPhotos(room)} name={roomName(room.name)} />
               <div className="room-body">
@@ -165,7 +193,8 @@ function App() {
                 </div>
               </div>
             </article>
-          ))}
+            ))
+          )}
           <article className="room-card" style={{ borderColor: 'var(--gold)' }}>
             <div className="room-body" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
               <h4 className="room-name" style={{ fontSize: '1.3rem' }}>{t('rooms.booking.title')}</h4>
